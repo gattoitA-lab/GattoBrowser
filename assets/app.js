@@ -230,7 +230,9 @@ function loadSettings() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return cloneSettings(DEFAULT_SETTINGS);
-    const s = deepMerge(cloneSettings(DEFAULT_SETTINGS), JSON.parse(raw));
+    const saved = JSON.parse(raw) || {};
+    const s = deepMerge(cloneSettings(DEFAULT_SETTINGS), saved);
+    const previousVersion = Number(saved.settingsVersion || 0);
     /* migrazione: rimuove il profilo di esempio con dati personali non richiesti */
     if (s.profileEmail === 'francypanda2014@gmail.com' || s.profileName === 'Francy') {
       s.profileName = DEFAULT_SETTINGS.profileName;
@@ -238,7 +240,7 @@ function loadSettings() {
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) { /* noop */ }
     }
     /* v2: niente più finestre automatiche per i siti non incorporabili */
-    if (!s.settingsVersion || s.settingsVersion < 2) {
+    if (previousVersion < 2) {
       s.autoExternal = false;
       s.settingsVersion = 2;
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) { /* noop */ }
