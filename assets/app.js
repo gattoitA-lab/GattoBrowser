@@ -39,7 +39,7 @@ const DEFAULT_SETTINGS = {
   highContrast: false, largeCaret: false, reducedMotion: false,
   searchEngine: 'gatto', suggestions: true, resultsNewTab: false,
   guard: true, guardLevel: 'medio', blockPopups: true, clearOnExit: false, doNotTrack: true,
-  memorySaver: true, memorySaverMinutes: 5, savingsMode: false, prefetch: true,
+  memorySaver: true, memorySaverMinutes: 5, savingsMode: false, prefetch: true, autoExternal: true,
   autofill: true, saveForms: true, savedIdentities: [],
   aiEnabled: true, autoCopyShot: true, aiTarget: CONFIG.chat, aiModel: 'meow-smart',
   startup: 'home', startupLinks: [],
@@ -327,12 +327,42 @@ function updateNavBtns() { syncToolbar(); }
 
 /* ---------------------------- navigation ----------------------------- */
 const EMBED_BLOCKERS = [
-  /^https?:\/\/(www\.)?google\./i, /^https?:\/\/news\.google\./i, /^https?:\/\/accounts\.google\./i,
-  /^https?:\/\/(www\.)?youtube\.com\/watch/i, /^https?:\/\/(www\.)?facebook\./i, /^https?:\/\/(www\.)?instagram\./i,
+  /^https?:\/\/(www\.)?google\./i, /^https?:\/\/news\.google\./i, /^https?:\/\/accounts\.google\./i, /^https?:\/\/mail\.google\./i,
+  /^https?:\/\/(www\.)?youtube\.com/i, /^https?:\/\/m\.youtube\.com/i, /^https?:\/\/youtu\.be/i,
+  /^https?:\/\/(www\.)?facebook\./i, /^https?:\/\/(www\.)?instagram\./i, /^https?:\/\/(www\.)?threads\./i,
   /^https?:\/\/(x|twitter)\.com/i, /^https?:\/\/(www\.)?amazon\./i, /^https?:\/\/(www\.)?netflix\./i,
   /^https?:\/\/(www\.)?tiktok\./i, /^https?:\/\/(www\.)?whatsapp\./i, /^https?:\/\/(www\.)?microsoft\./i,
-  /^https?:\/\/(www\.)?apple\.com/i, /^https?:\/\/(www\.)?mozilla\./i, /^https?:\/\/mail\.google\./i
+  /^https?:\/\/(www\.)?apple\.com/i, /^https?:\/\/(www\.)?mozilla\./i,
+  /^https?:\/\/(www\.)?reddit\.com/i, /^https?:\/\/(www\.)?linkedin\.com/i, /^https?:\/\/pinterest\./i,
+  /^https?:\/\/(www\.)?discord\.com/i, /^https?:\/\/(open\.)?spotify\.com/i, /^https?:\/\/web\.telegram\.org/i,
+  /^https?:\/\/(www\.)?twitch\.tv\/?$/i, /^https?:\/\/(www\.)?primevideo\./i, /^https?:\/\/(www\.)?disneyplus\./i,
+  /^https?:\/\/(www\.)?ebay\./i, /^https?:\/\/(www\.)?paypal\./i, /^https?:\/\/(www\.)?notion\.so/i,
+  /^https?:\/\/(chatgpt\.com|chat\.openai\.com)/i, /^https?:\/\/chat\.deepseek\.com/i, /^https?:\/\/(www\.)?canva\.com/i
 ];
+
+/* YouTube blocca l'incorporamento delle pagine normali, ma il player /embed/ è fatto apposta */
+function youtubeId(url) {
+  try {
+    const u = new URL(url);
+    const isYT = /(^|\.)youtube\.com$|(^|\.)youtube-nocookie\.com$/i.test(u.hostname);
+    if (u.hostname === 'youtu.be') {
+      const id = u.pathname.slice(1).split('/')[0];
+      return id && /^[\w-]{6,}$/.test(id) ? id : null;
+    }
+    if (!isYT) return null;
+    if (u.pathname === '/watch') {
+      const v = u.searchParams.get('v');
+      return v && /^[\w-]{6,}$/.test(v) ? v : null;
+    }
+    const m = u.pathname.match(/^\/(embed|shorts|live|v)\/([\w-]{6,})/);
+    return m ? m[2] : null;
+  } catch (e) { return null; }
+}
+
+function isExternalOnly(url) {
+  if (youtubeId(url)) return false; // il player è incorporabile
+  return EMBED_BLOCKERS.some((rx) => rx.test(url));
+}
 
 function navigate(tab, rawUrl, opts) {
   const o = opts || {};
@@ -444,6 +474,7 @@ function buildHome(tab) {
           '<div class="logo">' + LOGO_SVG + '</div>' +
           '<div><div class="brand-name">GattoBrowser</div><div class="brand-sub">by GattoHub · v' + CONFIG.version + ' · ' + (S.guard ? 'GattoGuard ON' : 'protezione OFF') + '</div></div>' +
           '<div class="brand-actions">' +
+            '<button class="mini-btn" data-act="run" data-run="install">⤓ Installa app</button>' +
             '<button class="mini-btn" data-act="open-settings" data-sec="look">Personalizza</button>' +
             '<button class="mini-btn solid" data-act="open-settings" data-sec="account">Impostazioni</button>' +
           '</div>' +
@@ -536,14 +567,50 @@ function buildNews(tab) {
 function buildWeb(tab) {
   const pane = tab.pane;
   pane.innerHTML = '';
-  const host = document.createElement('div');
-  host.className = 'web-host';
-  if (EMBED_BLOCKERS.some((rx) => rx.test(tab.url))) {
+
+  /* Player YouTube: la pagina /watch non è incorporabile, il player si carica solo al clic */
+  const ytId = youtubeId(tab.url);
+  if (ytId) {
+    const host = document.createElement('div');
+    host.className = 'web-host';
     const note = document.createElement('div');
     note.className = 'embed-note';
-    note.innerHTML = '<b>Nota:</b> questo sito può rifiutare l\'incorporamento. Se vedi una pagina bianca, aprilo in una finestra dedicata.<button data-act="open-external" data-url="' + esc(tab.url) + '">Apri in finestra ↗</button>';
+    note.innerHTML = '▶ <b>Player YouTube</b> dentro GattoBrowser · ' + esc(tab.title || 'video') +
+      '<button data-act="open-external" data-url="' + esc(tab.url) + '">Apri su YouTube ↗</button>';
     host.appendChild(note);
+    const poster = document.createElement('div');
+    poster.className = 'yt-poster';
+    poster.style.backgroundImage = 'url("https://i.ytimg.com/vi/' + encodeURIComponent(ytId) + '/hqdefault.jpg")';
+    const play = document.createElement('button');
+    play.className = 'yt-play';
+    play.type = 'button';
+    play.innerHTML = '▶';
+    play.title = 'Riproduci il video dentro GattoBrowser';
+    play.onclick = () => {
+      const frame = document.createElement('iframe');
+      frame.src = 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0';
+      frame.title = 'YouTube: ' + (tab.title || ytId);
+      frame.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen');
+      frame.style.cssText = 'width:100%;height:100%;border:none;background:#000';
+      poster.replaceWith(frame);
+      tab.frame = frame;
+    };
+    poster.appendChild(play);
+    host.appendChild(poster);
+    pane.appendChild(host);
+    tab.suspended = false;
+    if (typeof renderCredentialBar === 'function') renderCredentialBar(tab);
+    return;
   }
+
+  /* Siti che vietano l'incorporamento: finestra dedicata (funziona davvero) */
+  if (isExternalOnly(tab.url)) {
+    buildExternalPane(tab);
+    return;
+  }
+
+  const host = document.createElement('div');
+  host.className = 'web-host';
   const frame = document.createElement('iframe');
   frame.src = tab.url;
   frame.title = tab.title || tab.url;
@@ -560,6 +627,41 @@ function buildWeb(tab) {
   frame.addEventListener('load', () => {
     $('#statusMsg').textContent = 'Caricato: ' + prettyHost(tab.url);
   });
+}
+
+function openDedicatedWindow(url) {
+  const w = window.open(url, '_blank', 'width=1200,height=860,menubar=yes,toolbar=yes');
+  if (!w) toast('Popup bloccato: consenti le finestre e riprova', 'err', 5000);
+  return !!w;
+}
+
+function buildExternalPane(tab) {
+  const pane = tab.pane;
+  const url = tab.url;
+  const wrap = document.createElement('div');
+  wrap.className = 'blocked';
+  wrap.innerHTML =
+    '<div class="card">' +
+      '<div class="shield">↗</div>' +
+      '<h2>Questo sito si apre in una finestra dedicata</h2>' +
+      '<p><b>' + esc(prettyHost(url)) + '</b> impedisce di essere mostrato dentro altre pagine (X-Frame-Options). GattoBrowser lo apre in una finestra sua: si usa esattamente come un\'app, con login, video e tutto il resto funzionanti.</p>' +
+      '<div class="url">' + esc(url) + '</div>' +
+      '<div class="acts">' +
+        '<button class="btn primary" data-open-here>Apri la finestra ↗</button>' +
+        '<button class="btn" data-act="copy-link" data-url="' + esc(url) + '">Copia link</button>' +
+        '<button class="btn" data-act="open-settings" data-sec="privacy">Impostazioni</button>' +
+      '</div>' +
+      '<div style="font-size:11.5px;color:var(--muted);max-width:100%">Apertura automatica: ' + (S.autoExternal ? 'attiva' : 'disattiva') + '. Puoi cambiarla in Impostazioni → Privacy.</div>' +
+    '</div>';
+  pane.appendChild(wrap);
+  const open = () => openDedicatedWindow(url);
+  const btn = wrap.querySelector('[data-open-here]');
+  if (btn) btn.onclick = open;
+  tab.openExternal = open;
+  if (S.autoExternal && !tab.autoOpened && (typeof hasGesture !== 'function' || hasGesture())) {
+    tab.autoOpened = true;
+    open();
+  }
 }
 
 function suspendTab(tab) {

@@ -152,6 +152,12 @@ function toggleMenu(force) {
 }
 function hideMenu() { $('#menu').classList.add('hidden'); }
 
+/* --------------------------- gesto utente ------------------------------ */
+let lastGestureAt = 0;
+document.addEventListener('pointerdown', () => { lastGestureAt = Date.now(); }, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') lastGestureAt = Date.now(); }, true);
+function hasGesture() { return Date.now() - lastGestureAt < 1500; }
+
 /* ------------------------------ GattoGuard ----------------------------- */
 const BAD_TLDS = ['.zip', '.mov', '.tk', '.ml', '.ga', '.cf', '.gq', '.top', '.click', '.rest', '.cam'];
 const BAD_WORDS = ['free-gift', 'crack', 'keygen', 'phishing', 'malware', 'scarica-gratis', 'vincita', 'bitcoin-generator', 'hack-free', 'trojan'];
@@ -218,7 +224,8 @@ const ACTIONS = {
     toast('GattoGuard aggirato per questa pagina', 'err');
   },
   'open-url'(el) { openUrl(el.dataset.url, { newTab: !!el.dataset.newtab }); },
-  'open-external'(el) { window.open(el.dataset.url, '_blank', 'noopener,noreferrer'); },
+  'open-external'(el) { openDedicatedWindow(el.dataset.url); },
+  'copy-link'(el) { copyText(el.dataset.url).then((ok) => toast(ok ? 'Link copiato' : 'Copia non riuscita', ok ? 'ok' : 'err')); },
   'open-page'(el) {
     const page = el.dataset.page;
     const found = state.tabs.find((t) => t.kind === page);

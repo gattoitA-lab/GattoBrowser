@@ -88,6 +88,7 @@ function settingsSectionHTML(id) {
           uS('guardLevel', 'Sensibilità del controllo', 'Quanto deve essere severo GattoGuard', [['basso', 'Bassa (solo rischi evidenti)'], ['medio', 'Media (consigliata)'], ['alto', 'Alta (blocca molto)']]) +
           uT('blockPopups', 'Blocca le finestre pop-up', 'Impedisce l\'apertura automatica di finestre da siti aperti.') +
           uT('doNotTrack', 'Invia “Non tracciare”', 'Segnala ai siti di non profilarti.') +
+          uT('autoExternal', 'Apri i siti non incorporabili in una finestra', 'Google, YouTube, Amazon e altri vietano l\'incorporamento: si aprono in una finestra dedicata funzionante.') +
           uT('clearOnExit', 'Elimina i dati alla chiusura', 'Cancella cronologia e download quando chiudi l\'app.') +
           uB('Estensioni integrate', 'GattoGuard, blocco popup, tema scuro per siti, note', 'extensions', 'Gestisci') +
           uB('Elimina dati di navigazione', 'Scegli cosa cancellare', 'clear', 'Elimina…') +
