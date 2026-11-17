@@ -804,37 +804,7 @@ function buildWeb(tab) {
   const ytId = youtubeId(tab.url);
   const isShort = /\/shorts\//i.test(tab.url);
   if (ytId) {
-    const host = document.createElement('div');
-    host.className = 'web-host';
-    const note = document.createElement('div');
-    note.className = 'embed-note';
-    note.innerHTML = '▶ <b>' + (isShort ? 'Shorts' : 'Player YouTube') + '</b> dentro GattoBrowser · ' + esc(tab.title || 'video') +
-      '<button data-act="open-external" data-url="' + esc(tab.url) + '">Apri su YouTube ↗</button>';
-    host.appendChild(note);
-    const poster = document.createElement('div');
-    poster.className = 'yt-poster' + (isShort ? ' short' : '');
-    poster.style.backgroundImage = 'url("https://i.ytimg.com/vi/' + encodeURIComponent(ytId) + '/hqdefault.jpg")';
-    const play = document.createElement('button');
-    play.className = 'yt-play';
-    play.type = 'button';
-    play.innerHTML = '▶';
-    play.title = 'Riproduci il video dentro GattoBrowser';
-    play.onclick = () => {
-      const frame = document.createElement('iframe');
-      frame.src = 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0';
-      frame.title = 'YouTube: ' + (tab.title || ytId);
-      frame.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen');
-      frame.style.cssText = isShort
-        ? 'display:block;width:100%;max-width:420px;height:100%;border:none;background:#000;margin:0 auto'
-        : 'width:100%;height:100%;border:none;background:#000';
-      poster.replaceWith(frame);
-      tab.frame = frame;
-    };
-    poster.appendChild(play);
-    host.appendChild(poster);
-    pane.appendChild(host);
-    tab.suspended = false;
-    if (typeof renderCredentialBar === 'function') renderCredentialBar(tab);
+    buildWatchPage(tab, ytId, isShort);
     return;
   }
 
@@ -1052,6 +1022,175 @@ function buildYouTubeApp(tab) {
         '<div class="yt-msg"><b>Non riesco a caricare adesso</b><br>' +
         'Il servizio che legge YouTube non risponde: prova a cercare su Bing o apri YouTube in una finestra.<br>' +
         '<button class="btn" data-act="open-external" data-url="' + esc(tab.url) + '">Apri YouTube in finestra ↗</button></div>';
+    });
+}
+
+/* Pagina video completa: player, titolo, descrizione, canale con bio, commenti */
+function ytFetchJson(path) {
+  const hosts = ytHosts();
+  const go = (i) => {
+    if (i >= hosts.length) return Promise.reject(new Error('nessun servizio'));
+    return fetch(hosts[i] + path)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+      .then((d) => {
+        if (!d || d.error) throw new Error('errore api');
+        return d;
+      })
+      .catch(() => go(i + 1));
+  };
+  return go(0);
+}
+
+function ytText(s) {
+  return String(s || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function fmtDate(iso) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch (e) { return ''; }
+}
+
+function fmtLikes(n) {
+  const v = Number(n) || 0;
+  if (v >= 1000000) return (v / 1000000).toFixed(1).replace('.', ',') + ' mln di Mi piace';
+  if (v >= 1000) return Math.round(v / 1000) + ' mila Mi piace';
+  return v + ' Mi piace';
+}
+
+function buildWatchPage(tab, ytId, isShort) {
+  const pane = tab.pane;
+  pane.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'watch';
+
+  const player = document.createElement('div');
+  player.className = 'watch-player' + (isShort ? ' short' : '');
+
+  const poster = document.createElement('div');
+  poster.className = 'yt-poster' + (isShort ? ' short' : '');
+  poster.style.backgroundImage = 'url("https://i.ytimg.com/vi/' + encodeURIComponent(ytId) + '/hqdefault.jpg")';
+
+  const play = document.createElement('button');
+  play.className = 'yt-play';
+  play.type = 'button';
+  play.innerHTML = '▶';
+  play.title = 'Riproduci dentro GattoBrowser';
+  play.onclick = () => {
+    const frame = document.createElement('iframe');
+    frame.src = 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0';
+    frame.title = tab.title || ytId;
+    frame.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen');
+    frame.style.cssText = isShort
+      ? 'display:block;width:100%;max-width:420px;height:100%;border:none;background:#000;margin:0 auto'
+      : 'width:100%;height:100%;border:none;background:#000';
+    poster.replaceWith(frame);
+    tab.frame = frame;
+  };
+  poster.appendChild(play);
+  player.appendChild(poster);
+
+  const info = document.createElement('div');
+  info.className = 'watch-info';
+  info.innerHTML = '<div class="yt-msg">Carico titolo, descrizione e canale…</div>';
+
+  const side = document.createElement('div');
+  side.className = 'watch-side';
+  side.innerHTML = '<div class="yt-msg">Carico i commenti…</div>';
+
+  wrap.appendChild(player);
+  wrap.appendChild(info);
+  wrap.appendChild(side);
+  pane.appendChild(wrap);
+  tab.suspended = false;
+  if (typeof renderCredentialBar === 'function') renderCredentialBar(tab);
+
+  ytFetchJson('/streams/' + encodeURIComponent(ytId))
+    .then((d) => {
+      const desc = ytText(d.description || '');
+      const live = !!d.livestream;
+      if (d.title) tab.title = d.title;
+      info.innerHTML =
+        '<h2 class="w-title">' + esc(d.title || 'Video') + '</h2>' +
+        '<div class="w-meta">' +
+          (live ? '<span class="w-live">● In diretta</span> ' : '') +
+          (d.views ? esc(fmtViews(d.views)) : '') +
+          (d.uploadDate ? ' · ' + esc(fmtDate(d.uploadDate)) : '') +
+          (d.likes ? ' · ' + esc(fmtLikes(d.likes)) : '') +
+        '</div>' +
+        '<div class="w-chan" id="wChan"></div>' +
+        (desc
+          ? '<div class="w-desc" id="wDesc">' + esc(desc.length > 340 ? desc.slice(0, 340) + '…' : desc) + '</div>'
+          : '') +
+        (desc.length > 340 ? '<button class="btn" id="wMore">Mostra tutta la descrizione</button>' : '') +
+        (live
+          ? '<div class="w-note">La chat della diretta non può essere mostrata dentro un\'altra pagina (YouTube la blocca): <button class="btn" id="wChat">Apri la chat ↗</button></div>'
+          : '');
+
+      const more = info.querySelector('#wMore');
+      if (more) more.onclick = () => {
+        const box = info.querySelector('#wDesc');
+        if (box) box.textContent = desc;
+        more.remove();
+      };
+      const chat = info.querySelector('#wChat');
+      if (chat) chat.onclick = () => openDedicatedWindow('https://www.youtube.com/live_chat?v=' + encodeURIComponent(ytId));
+
+      if (d.uploaderUrl) {
+        ytFetchJson(d.uploaderUrl)
+          .then((c) => {
+            const chan = info.querySelector('#wChan');
+            if (!chan) return;
+            chan.innerHTML =
+              (c.avatarUrl ? '<img class="yt-avatar small" alt="" src="' + esc(c.avatarUrl) + '">' : '') +
+              '<div class="w-chan-txt"><b>' + esc(c.name || d.uploader || 'Canale') + '</b>' +
+              '<small>' + esc(c.subscriberCount ? fmtSubs(c.subscriberCount) : '') + '</small></div>' +
+              '<button class="btn" id="wOpenChan">Vai al canale</button>';
+            const go = chan.querySelector('#wOpenChan');
+            if (go) go.onclick = () => navigate(tab, 'https://www.youtube.com' + d.uploaderUrl, { replace: true });
+            const bio = ytText(c.description || '');
+            if (bio) {
+              const p = document.createElement('p');
+              p.className = 'w-bio';
+              p.textContent = 'Bio del canale: ' + (bio.length > 220 ? bio.slice(0, 220) + '…' : bio);
+              chan.appendChild(p);
+            }
+          })
+          .catch(() => {});
+      }
+    })
+    .catch(() => {
+      info.innerHTML = '<div class="yt-msg">Non riesco a leggere i dettagli del video adesso.</div>';
+    });
+
+  ytFetchJson('/comments/' + encodeURIComponent(ytId))
+    .then((d) => {
+      const list = (d.comments || []).slice(0, 12);
+      if (!list.length) {
+        side.innerHTML = '<div class="yt-msg">Commenti disattivati o non disponibili per questo video.</div>';
+        return;
+      }
+      side.innerHTML =
+        '<h3 class="w-side-title">Commenti · ' + list.length + '</h3>' +
+        list.map((c) =>
+          '<div class="cmt">' +
+            (c.thumbnail ? '<img class="cmt-av" loading="lazy" alt="" src="' + esc(c.thumbnail) + '">' : '') +
+            '<div class="cmt-body"><b>' + esc(ytText(c.author || 'Utente')) + '</b>' +
+            '<span class="cmt-time">' + esc(c.commentedTime || '') + '</span>' +
+            '<p>' + esc(ytText(c.commentText || '')) + '</p>' +
+            (c.likeCount ? '<small>' + esc(fmtLikes(c.likeCount)) + '</small>' : '') +
+            '</div></div>').join('');
+    })
+    .catch(() => {
+      side.innerHTML = '<div class="yt-msg">Commenti non disponibili adesso.</div>';
     });
 }
 
