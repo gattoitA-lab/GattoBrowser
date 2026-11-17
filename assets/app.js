@@ -493,9 +493,23 @@ function youtubeId(url) {
   } catch (e) { return null; }
 }
 
+/* Domini verificati che inviano X-Frame-Options / frame-ancestors: si aprono in finestra */
+const EXTERNAL_HOSTS = [
+  'duolingo.com', 'netflix.com', 'instagram.com', 'tiktok.com', 'spotify.com', 'github.com',
+  'subito.it', 'booking.com', 'airbnb.it', 'airbnb.com', 'ansa.it', 'canva.com', 'chatgpt.com',
+  'openai.com', 'gemini.google.com', 'roblox.com', 'epicgames.com', 'satispay.com', 'quizlet.com',
+  'coursera.org', 'mediasetinfinity.mediaset.it', 'mediaset.it', 'disneyplus.com', 'primevideo.com',
+  'dazn.com', 'twitch.tv', 'linkedin.com', 'pinterest.com', 'reddit.com', 'discord.com',
+  'whatsapp.com', 'web.telegram.org', 'x.com', 'twitter.com', 'facebook.com', 'netflix.net',
+  'englishtest.duolingo.com', 'hbonmax.com', 'hbomax.com', 'crunchyroll.com', 'wattpad.com'
+];
+
 function isExternalOnly(url) {
   if (youtubeId(url)) return false; // il player è incorporabile
-  return EMBED_BLOCKERS.some((rx) => rx.test(url));
+  if (EMBED_BLOCKERS.some((rx) => rx.test(url))) return true;
+  const host = hostOf(url);
+  if (!host) return false;
+  return EXTERNAL_HOSTS.some((d) => host === d || host.endsWith('.' + d));
 }
 
 function navigate(tab, rawUrl, opts) {
