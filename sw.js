@@ -1,5 +1,5 @@
-/* GattoBrowser service worker — pagine sempre aggiornate, asset in cache */
-const CACHE = 'gattobrowser-v2';
+/* GattoBrowser service worker — sempre la versione aggiornata, cache solo offline */
+const CACHE = 'gattobrowser-v3';
 const CORE = [
   './', './browser.html', './index.html', './manifest.webmanifest',
   './assets/app.css', './assets/app.js', './assets/app-ui.js', './assets/settings.js',
@@ -27,37 +27,23 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // solo risorse dell'app
 
-  const isHTML = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
-
-  // Pagine: prima la rete (aggiornamenti immediati), cache solo come fallback offline
-  if (isHTML) {
-    e.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match('./browser.html')))
-    );
-    return;
-  }
-
-  // Asset: cache-first con aggiornamento in background
-  e.respondWith(
-    caches.match(req).then((hit) => {
-      const net = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => hit);
-      return hit || net;
-    })
-  );
+  e.respondWith((async () => {
+    try {
+      // no-cache = richiesta con revalidazione: nessun contenuto vecchio
+      const res = await fetch(req, { cache: 'no-cache' });
+      if (res && res.status === 200) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      }
+      return res;
+    } catch (err) {
+      const hit = await caches.match(req);
+      if (hit) return hit;
+      if (req.mode === 'navigate') {
+        const shell = await caches.match('./browser.html');
+        if (shell) return shell;
+      }
+      return Response.error();
+    }
+  })());
 });
