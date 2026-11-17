@@ -239,9 +239,10 @@ function loadSettings() {
       s.profileEmail = DEFAULT_SETTINGS.profileEmail;
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) { /* noop */ }
     }
-    /* v2: niente più finestre automatiche per i siti non incorporabili */
-    if (previousVersion < 2) {
+    /* una volta sola: niente finestre automatiche per i siti non incorporabili */
+    if (!saved.autoWindowMigrated) {
       s.autoExternal = false;
+      s.autoWindowMigrated = true;
       s.settingsVersion = 2;
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) { /* noop */ }
     }
