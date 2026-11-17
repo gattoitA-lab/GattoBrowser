@@ -525,6 +525,10 @@ function youTubeRoute(url) {
     if (p === '/' || p === '') return { type: 'home' };
     if (/^\/feed\/(trending|explore)$/i.test(p)) return { type: 'home' };
     if (p === '/results') return { type: 'search', q: u.searchParams.get('search_query') || '' };
+    if (/^\/shorts(\/|$)/.test(p)) {
+      const sid = p.split('/')[2];
+      return sid ? { type: 'short', id: sid } : { type: 'shorts' };
+    }
     let m = p.match(/^\/channel\/([^/]+)/);
     if (m) return { type: 'channel', id: m[1] };
     m = p.match(/^\/(@[^/]+)/);
@@ -798,16 +802,17 @@ function buildWeb(tab) {
 
   /* Player YouTube: la pagina /watch non è incorporabile, il player si carica solo al clic */
   const ytId = youtubeId(tab.url);
+  const isShort = /\/shorts\//i.test(tab.url);
   if (ytId) {
     const host = document.createElement('div');
     host.className = 'web-host';
     const note = document.createElement('div');
     note.className = 'embed-note';
-    note.innerHTML = '▶ <b>Player YouTube</b> dentro GattoBrowser · ' + esc(tab.title || 'video') +
+    note.innerHTML = '▶ <b>' + (isShort ? 'Shorts' : 'Player YouTube') + '</b> dentro GattoBrowser · ' + esc(tab.title || 'video') +
       '<button data-act="open-external" data-url="' + esc(tab.url) + '">Apri su YouTube ↗</button>';
     host.appendChild(note);
     const poster = document.createElement('div');
-    poster.className = 'yt-poster';
+    poster.className = 'yt-poster' + (isShort ? ' short' : '');
     poster.style.backgroundImage = 'url("https://i.ytimg.com/vi/' + encodeURIComponent(ytId) + '/hqdefault.jpg")';
     const play = document.createElement('button');
     play.className = 'yt-play';
@@ -819,7 +824,9 @@ function buildWeb(tab) {
       frame.src = 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0';
       frame.title = 'YouTube: ' + (tab.title || ytId);
       frame.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen');
-      frame.style.cssText = 'width:100%;height:100%;border:none;background:#000';
+      frame.style.cssText = isShort
+        ? 'display:block;width:100%;max-width:420px;height:100%;border:none;background:#000;margin:0 auto'
+        : 'width:100%;height:100%;border:none;background:#000';
       poster.replaceWith(frame);
       tab.frame = frame;
     };
@@ -894,7 +901,7 @@ function fmtSubs(n) {
   return v + ' iscritti';
 }
 
-function ytItemCard(it, tab) {
+function ytItemCard(it, tab, short) {
   if (!it) return null;
   const url = String(it.url || '');
   const card = document.createElement('button');
@@ -924,18 +931,21 @@ function ytItemCard(it, tab) {
   const vid = (url.match(/v=([\w-]{6,})/) || [])[1];
   if (!vid) return null;
   card.innerHTML =
-    '<div class="yt-thumb"><img loading="lazy" alt="" src="' + esc(it.thumbnail || ('https://i.ytimg.com/vi/' + vid + '/hqdefault.jpg')) + '">' +
+    '<div class="yt-thumb' + (short ? ' short' : '') + '"><img loading="lazy" alt="" src="' + esc(it.thumbnail || ('https://i.ytimg.com/vi/' + vid + '/hqdefault.jpg')) + '">' +
     (it.duration ? '<span class="yt-dur">' + esc(fmtDuration(it.duration)) + '</span>' : '') + '</div>' +
     '<b>' + esc(it.title || 'Video') + '</b>' +
     '<small>' + esc(it.uploaderName || '') + (it.views ? ' · ' + esc(fmtViews(it.views)) : '') + '</small>';
-  card.onclick = () => openUrl('https://www.youtube.com/watch?v=' + vid, { newTab: true });
+  card.onclick = () => openUrl(short
+    ? 'https://www.youtube.com/shorts/' + vid
+    : 'https://www.youtube.com/watch?v=' + vid, { newTab: true });
   return card;
 }
 
 function buildYouTubeApp(tab) {
   const pane = tab.pane;
   const route = youTubeRoute(tab.url) || { type: 'home' };
-  const q = route.q || '';
+  const shortsHome = route.type === 'shorts';
+  const q = shortsHome ? '#shorts' : (route.q || '');
   if (route.type !== 'search') tab.ytFilter = 'all';
   const filter = tab.ytFilter || 'all';
 
@@ -944,8 +954,9 @@ function buildYouTubeApp(tab) {
   wrap.className = 'yt-app';
   wrap.innerHTML =
     '<div class="yt-top">' +
-      '<b class="yt-brand">▶ YouTube</b>' +
-      '<form class="yt-form"><input id="ytQ" type="search" placeholder="Cerca video, canali e playlist" value="' + esc(q) + '"><button class="btn primary" type="submit">Cerca</button></form>' +
+      '<b class="yt-brand">▶ ' + (shortsHome ? 'Shorts' : 'YouTube') + '</b>' +
+      '<form class="yt-form"><input id="ytQ" type="search" placeholder="Cerca video, canali e playlist" value="' + (shortsHome ? '' : esc(q)) + '"><button class="btn primary" type="submit">Cerca</button></form>' +
+      '<button type="button" class="yt-chip' + (shortsHome ? ' on' : '') + '" data-shorts>Shorts</button>' +
       '<span class="tag">dentro GattoBrowser</span>' +
     '</div>' +
     (route.type === 'search'
@@ -964,10 +975,13 @@ function buildYouTubeApp(tab) {
   wrap.querySelectorAll('[data-f]').forEach((b) => {
     b.onclick = () => { tab.ytFilter = b.dataset.f; buildYouTubeApp(tab); };
   });
+  const shortsBtn = wrap.querySelector('[data-shorts]');
+  if (shortsBtn) shortsBtn.onclick = () => navigate(tab, 'https://www.youtube.com/shorts', { replace: true });
   tab.suspended = false;
 
   let ytPath;
-  if (route.type === 'search') ytPath = '/search?q=' + encodeURIComponent(q) + '&filter=' + filter;
+  if (shortsHome) ytPath = '/search?q=' + encodeURIComponent('#shorts') + '&filter=videos';
+  else if (route.type === 'search') ytPath = '/search?q=' + encodeURIComponent(q) + '&filter=' + filter;
   else if (route.type === 'playlist') ytPath = '/playlist?list=' + encodeURIComponent(route.list);
   else if (route.type === 'channel') {
     ytPath = route.id
@@ -994,6 +1008,11 @@ function buildYouTubeApp(tab) {
       if (route.type === 'playlist') items = (data && data.videos) || [];
       else if (route.type === 'channel') items = (data && data.relatedStreams) || [];
       else items = Array.isArray(data) ? data : ((data && data.items) || []);
+      if (shortsHome) {
+        const shortOnes = items.filter((i) => i && i.duration && i.duration <= 90);
+        if (shortOnes.length >= 4) items = shortOnes;
+        items = items.slice(0, 24);
+      }
 
       if (route.type === 'channel' || route.type === 'playlist') {
         const head = document.createElement('div');
@@ -1013,9 +1032,16 @@ function buildYouTubeApp(tab) {
       }
 
       grid.innerHTML = '';
+      if (shortsHome) {
+        const info = document.createElement('div');
+        info.className = 'yt-msg yt-shorts-note';
+        info.innerHTML = '<b>Shorts dentro GattoBrowser</b> · tocchi un verticale e lo guardi qui.<br>' +
+          'YouTube non lascia leggere il feed Shorts agli altri siti: questo elenco arriva dalla ricerca #shorts.';
+        grid.appendChild(info);
+      }
       let count = 0;
       items.forEach((it) => {
-        const card = ytItemCard(it, tab);
+        const card = ytItemCard(it, tab, shortsHome);
         if (card) { grid.appendChild(card); count++; }
       });
       if (!count) grid.innerHTML = '<div class="yt-msg">Nessun risultato per questo filtro.</div>';
@@ -1041,7 +1067,9 @@ function buildExternalPane(tab) {
   const googleQuery = (() => {
     try {
       const u = new URL(url);
-      return /(^|\.)google\./i.test(u.hostname) && /^\/search/.test(u.pathname) ? (u.searchParams.get('q') || '') : '';
+      if (/(^|\.)google\./i.test(u.hostname) && /^\/search/.test(u.pathname)) return u.searchParams.get('q') || '';
+      if (/(^|\.)duckduckgo\.com$/i.test(u.hostname)) return u.searchParams.get('q') || '';
+      return '';
     } catch (e) { return ''; }
   })();
   const wrap = document.createElement('div');
@@ -1053,7 +1081,8 @@ function buildExternalPane(tab) {
       '<p><b>' + esc(prettyHost(url)) + '</b> invia l\'header <b>X-Frame-Options</b>: per sicurezza impedisce a qualunque browser di mostrarlo dentro un\'altra pagina. Non è un limite di GattoBrowser, è una scelta del sito.</p>' +
       '<div class="url">' + esc(url) + '</div>' +
       '<div class="acts">' +
-        (googleQuery ? '<button class="btn primary" data-bing>Cerca con Bing qui</button>' : '') +
+        (googleQuery ? '<button class="btn primary" data-google>Cerca con Google qui</button>' : '') +
+        (googleQuery ? '<button class="btn" data-bing>Cerca con Bing qui</button>' : '') +
         '<button class="btn" data-force>Prova a mostrarlo qui</button>' +
         '<button class="btn' + (googleQuery ? '' : ' primary') + '" data-open-here>Apri in una finestra dedicata ↗</button>' +
         '<button class="btn" data-act="copy-link" data-url="' + esc(url) + '">Copia link</button>' +
@@ -1066,6 +1095,8 @@ function buildExternalPane(tab) {
   wrap.querySelector('[data-force]').onclick = () => { tab.forceEmbed = true; refreshTab(tab); };
   const bingBtn = wrap.querySelector('[data-bing]');
   if (bingBtn) bingBtn.onclick = () => navigate(tab, 'https://www.bing.com/search?q=' + encodeURIComponent(googleQuery), { replace: true });
+  const googleBtn = wrap.querySelector('[data-google]');
+  if (googleBtn) googleBtn.onclick = () => navigate(tab, 'https://www.google.com/search?q=' + encodeURIComponent(googleQuery), { replace: true });
 
   const host = hostOf(url);
   const remembered = Array.isArray(S.autoWindowHosts) && host && S.autoWindowHosts.indexOf(host) !== -1;
