@@ -78,7 +78,8 @@ function settingsSectionHTML(id) {
           uB('Aggiungi un profilo', 'Nome, email e indirizzo per la compilazione', 'identity-add', '＋ Aggiungi') +
           identityRows() +
         '</div>' +
-        '<div class="set-note">🔒 GattoBrowser non salva password in chiaro: usa la cassaforte del sistema operativo. Se disattivi la compilazione automatica, i profili restano salvati ma non vengono proposti.</div>';
+        '<div class="set-note">Se disattivi la compilazione automatica, i profili restano salvati ma non vengono proposti.</div>' +
+        '<div id="vaultHost"></div>';
 
     case 'privacy':
       return '<h3>Privacy e sicurezza</h3>' +
@@ -234,6 +235,7 @@ function buildSettings(tab) {
     '</div>';
   const search = $('#setSearch', pane);
   if (search) search.addEventListener('input', () => filterSettings(search.value));
+  if (typeof mountVault === 'function') mountVault(pane);
 }
 
 function setSettingsSection(id) {

@@ -556,6 +556,7 @@ function buildWeb(tab) {
   pane.appendChild(host);
   tab.frame = frame;
   tab.suspended = false;
+  if (typeof renderCredentialBar === 'function') renderCredentialBar(tab);
   frame.addEventListener('load', () => {
     $('#statusMsg').textContent = 'Caricato: ' + prettyHost(tab.url);
   });
