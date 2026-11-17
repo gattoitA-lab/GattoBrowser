@@ -183,6 +183,7 @@ const DEFAULT_SETTINGS = {
   bookmarks: [{ title: 'GattoHub', url: CONFIG.hub }],
   homeLinks: DEFAULT_HOME_LINKS.slice(),
   homeBg: { type: 'gradient', value: '' },
+  settingsVersion: 2,
   lists: [], groups: [],
   extensions: { guard: true, popups: true, dark: false, quicknote: true, ai: true, reader: true },
   history: [], downloads: []
@@ -234,6 +235,12 @@ function loadSettings() {
     if (s.profileEmail === 'francypanda2014@gmail.com' || s.profileName === 'Francy') {
       s.profileName = DEFAULT_SETTINGS.profileName;
       s.profileEmail = DEFAULT_SETTINGS.profileEmail;
+      try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) { /* noop */ }
+    }
+    /* v2: niente più finestre automatiche per i siti non incorporabili */
+    if (!s.settingsVersion || s.settingsVersion < 2) {
+      s.autoExternal = false;
+      s.settingsVersion = 2;
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) { /* noop */ }
     }
     return s;
