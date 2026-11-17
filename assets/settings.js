@@ -17,6 +17,19 @@ const SETTINGS_SECTIONS = [
   { id: 'system', icon: '⚙', label: 'Sistema' }
 ];
 
+/* interruttori: il click deve funzionare davvero */
+ACTIONS.toggle = function (el) {
+  const key = el.dataset.key;
+  if (!key) return;
+  const cur = !!getPath(S, key);
+  const val = !cur;
+  setPath(S, key, val);
+  save();
+  el.setAttribute('aria-checked', String(val));
+  applySettings();
+  onSettingChanged(key, val);
+};
+
 const uT = (key, label, desc) =>
   '<div class="set-row"><div class="txt"><b>' + label + '</b>' + (desc ? '<small>' + desc + '</small>' : '') + '</div>' +
   '<div class="ctl"><button class="switch" role="switch" aria-checked="' + (!!getPath(S, key)) + '" data-act="toggle" data-key="' + key + '" aria-label="' + label + '"></button></div></div>';
@@ -62,7 +75,7 @@ function settingsSectionHTML(id) {
             '<div class="txt"><b>' + esc(S.profileName) + '</b><small>' + esc(S.profileEmail) + '</small></div>' +
             '<div class="ctl"><span class="pill">Accesso effettuato</span></div></div>' +
           uB('Servizi GattoHub', 'Giochi, app e minigiochi nel browser', 'hub', 'Apri GattoHub') +
-          uB('Personalizza il profilo', 'Nome e email mostrati nel menu', 'profile', 'Modifica') +
+          uB('Collega account GattoHub', 'Nome e email del profilo GattoHub usato da GattoBrowser', 'profile', 'Collega') +
           uB('Chat AI di GattoHub', 'La chat dove finiscono i tuoi screenshot', 'ai-open', 'Apri chat') +
           uB('Importa preferiti e impostazioni', 'Da un file JSON esportato da GattoBrowser', 'import', 'Importa') +
           uB('Esporta impostazioni', 'Salva un backup delle tue preferenze', 'export', 'Esporta') +
@@ -88,7 +101,7 @@ function settingsSectionHTML(id) {
           uS('guardLevel', 'Sensibilità del controllo', 'Quanto deve essere severo GattoGuard', [['basso', 'Bassa (solo rischi evidenti)'], ['medio', 'Media (consigliata)'], ['alto', 'Alta (blocca molto)']]) +
           uT('blockPopups', 'Blocca le finestre pop-up', 'Impedisce l\'apertura automatica di finestre da siti aperti.') +
           uT('doNotTrack', 'Invia “Non tracciare”', 'Segnala ai siti di non profilarti.') +
-          uT('autoExternal', 'Apri i siti non incorporabili in una finestra', 'Google, YouTube, Amazon e altri vietano l\'incorporamento: si aprono in una finestra dedicata funzionante.') +
+          uT('autoExternal', 'Apri in automatico una finestra per i siti non incorporabili', 'Disattivo di serie: i siti restano nella scheda con un avviso, la finestra si apre solo se la chiedi tu.') +
           uT('clearOnExit', 'Elimina i dati alla chiusura', 'Cancella cronologia e download quando chiudi l\'app.') +
           uB('Estensioni integrate', 'GattoGuard, blocco popup, tema scuro per siti, note', 'extensions', 'Gestisci') +
           uB('Elimina dati di navigazione', 'Scegli cosa cancellare', 'clear', 'Elimina…') +
@@ -150,6 +163,7 @@ function settingsSectionHTML(id) {
     case 'default':
       return '<h3>Browser predefinito</h3>' +
         '<div class="set-card">' +
+          uI('Account GattoHub', esc(S.profileName) + (S.profileEmail ? ' · ' + esc(S.profileEmail) : '')) +
           uI('Stato', '<span id="defaultState">' + (window.matchMedia('(display-mode: standalone)').matches ? 'installato come app' : 'in esecuzione nel browser') + '</span>') +
           uB('Installa GattoBrowser come app', 'Icona sul desktop o sulla schermata Home', 'install', 'Installa') +
           uB('Diventa il browser predefinito', 'Istruzioni per il tuo sistema operativo', 'default-guide', 'Configura') +
@@ -362,15 +376,16 @@ function refreshSettingsPane() {
 }
 
 function profileModal() {
-  const back = openModal('Personalizza il profilo',
-    '<label class="field">Nome<input id="pmName" value="' + esc(S.profileName) + '"></label>' +
-    '<label class="field">Email<input id="pmMail" value="' + esc(S.profileEmail) + '"></label>' +
-    '<div class="set-note">Il profilo è locale: serve solo a personalizzare menu e pagina iniziale.</div>',
+  const back = openModal('Collega account GattoHub',
+    '<p>GattoHub non ha un server di login pubblico: l\'account è il profilo che usi qui, salvato solo su questo dispositivo. Inserisci il nome (o nickname) e la mail del tuo account GattoHub.</p>' +
+    '<label class="field">Nome o nickname<input id="pmName" value="' + esc(S.profileName) + '" placeholder="il tuo nome su GattoHub"></label>' +
+    '<label class="field">Email (opzionale)<input id="pmMail" value="' + esc(S.profileEmail) + '" placeholder="nome@email.it"></label>' +
+    '<div class="set-note">Questi dati restano sul dispositivo e vengono usati per il menu, la pagina iniziale e l\'intestazione della cassaforte.</div>',
     '<button class="btn" data-close>Annulla</button><button class="btn primary js-save">Salva</button>');
   back.querySelector('.js-save').onclick = () => {
-    S.profileName = back.querySelector('#pmName').value.trim() || 'Gatto';
+    S.profileName = back.querySelector('#pmName').value.trim() || 'GattoHub';
     S.profileEmail = back.querySelector('#pmMail').value.trim();
-    save(); applySettings(); refreshSettingsPane(); back.remove(); toast('Profilo aggiornato', 'ok');
+    save(); applySettings(); refreshSettingsPane(); back.remove(); toast('Account GattoHub collegato', 'ok');
   };
 }
 

@@ -168,12 +168,12 @@ const DEFAULT_HOME_LINKS = [
 ];
 
 const DEFAULT_SETTINGS = {
-  profileName: 'Francy', profileEmail: 'francypanda2014@gmail.com',
+  profileName: 'GattoHub', profileEmail: '',
   theme: 'dark', accent: '#00ff66', fontSize: 14, animations: true,
   highContrast: false, largeCaret: false, reducedMotion: false,
   searchEngine: 'gatto', suggestions: true, resultsNewTab: false,
   guard: true, guardLevel: 'medio', blockPopups: true, clearOnExit: false, doNotTrack: true,
-  memorySaver: true, memorySaverMinutes: 5, savingsMode: false, prefetch: true, autoExternal: true,
+  memorySaver: true, memorySaverMinutes: 5, savingsMode: false, prefetch: true, autoExternal: false,
   autofill: true, saveForms: true, savedIdentities: [],
   aiEnabled: true, autoCopyShot: true, aiTarget: CONFIG.chat, aiModel: 'meow-smart',
   startup: 'home', startupLinks: [],
@@ -229,7 +229,14 @@ function loadSettings() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return cloneSettings(DEFAULT_SETTINGS);
-    return deepMerge(cloneSettings(DEFAULT_SETTINGS), JSON.parse(raw));
+    const s = deepMerge(cloneSettings(DEFAULT_SETTINGS), JSON.parse(raw));
+    /* migrazione: rimuove il profilo di esempio con dati personali non richiesti */
+    if (s.profileEmail === 'francypanda2014@gmail.com' || s.profileName === 'Francy') {
+      s.profileName = DEFAULT_SETTINGS.profileName;
+      s.profileEmail = DEFAULT_SETTINGS.profileEmail;
+      try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) { /* noop */ }
+    }
+    return s;
   } catch (e) {
     return cloneSettings(DEFAULT_SETTINGS);
   }
@@ -751,8 +758,8 @@ function buildWeb(tab) {
     return;
   }
 
-  /* Siti che vietano l'incorporamento: finestra dedicata (funziona davvero) */
-  if (isExternalOnly(tab.url)) {
+  /* Siti che vietano l'incorporamento: tutto dentro la scheda, con scelta esplicita */
+  if (!tab.forceEmbed && isExternalOnly(tab.url)) {
     buildExternalPane(tab);
     return;
   }
@@ -811,26 +818,21 @@ function buildExternalPane(tab) {
   wrap.className = 'blocked';
   wrap.innerHTML =
     '<div class="card">' +
-      '<div class="shield">↗</div>' +
-      '<h2>Questo sito si apre in una finestra dedicata</h2>' +
-      '<p><b>' + esc(prettyHost(url)) + '</b> impedisce di essere mostrato dentro altre pagine (X-Frame-Options). GattoBrowser lo apre in una finestra sua: si usa esattamente come un\'app, con login, video e tutto il resto funzionanti.</p>' +
+      '<div class="shield">🔒</div>' +
+      '<h2>Questo sito vieta di essere aperto dentro un\'altra pagina</h2>' +
+      '<p><b>' + esc(prettyHost(url)) + '</b> invia l\'header <b>X-Frame-Options</b>: per sicurezza impedisce a qualunque browser di mostrarlo dentro un\'altra pagina. Non è un limite di GattoBrowser, è una scelta del sito.</p>' +
       '<div class="url">' + esc(url) + '</div>' +
       '<div class="acts">' +
-        '<button class="btn primary" data-open-here>Apri la finestra ↗</button>' +
+        '<button class="btn" data-force>Prova a mostrarlo qui</button>' +
+        '<button class="btn primary" data-open-here>Apri in una finestra dedicata ↗</button>' +
         '<button class="btn" data-act="copy-link" data-url="' + esc(url) + '">Copia link</button>' +
-        '<button class="btn" data-act="open-settings" data-sec="privacy">Impostazioni</button>' +
       '</div>' +
-      '<div style="font-size:11.5px;color:var(--muted);max-width:100%">Apertura automatica: ' + (S.autoExternal ? 'attiva' : 'disattiva') + '. Puoi cambiarla in Impostazioni → Privacy.</div>' +
+      '<div style="font-size:11.5px;color:var(--muted);max-width:100%">Nessuna finestra si apre da sola: premi tu il pulsante quando vuoi. Puoi attivare l\'apertura automatica in Impostazioni → Privacy.</div>' +
     '</div>';
   pane.appendChild(wrap);
-  const open = () => openDedicatedWindow(url);
-  const btn = wrap.querySelector('[data-open-here]');
-  if (btn) btn.onclick = open;
-  tab.openExternal = open;
-  if (S.autoExternal && !tab.autoOpened && (typeof hasGesture !== 'function' || hasGesture())) {
-    tab.autoOpened = true;
-    open();
-  }
+  wrap.querySelector('[data-open-here]').onclick = () => openDedicatedWindow(url);
+  wrap.querySelector('[data-force]').onclick = () => { tab.forceEmbed = true; refreshTab(tab); };
+  if (S.autoExternal && (typeof hasGesture !== 'function' || hasGesture())) openDedicatedWindow(url);
 }
 
 function suspendTab(tab) {

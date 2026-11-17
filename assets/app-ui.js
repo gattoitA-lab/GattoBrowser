@@ -114,8 +114,8 @@ function buildMenu() {
   $('#menu').innerHTML =
     '<div class="dd-profile" data-act="open-settings" data-sec="account">' +
       '<div class="av">' + esc(favLetter(S.profileName)) + '</div>' +
-      '<div class="nm"><b>' + esc(S.profileName) + '</b><small>' + esc(S.profileEmail) + '</small></div>' +
-      '<span class="pill">Accesso effettuato</span>' +
+      '<div class="nm"><b>' + esc(S.profileName) + '</b><small>' + esc(S.profileEmail || 'account collegato a GattoHub') + '</small></div>' +
+      '<span class="pill">GattoHub</span>' +
     '</div>' +
     '<button class="dd-item" data-act="open-settings" data-sec="autofill"><span class="ico">🔑</span><span class="t">Password e compilazione automatica</span><span class="arrow">›</span></button>' +
     '<button class="dd-item" data-act="open-page" data-page="history"><span class="ico">🕘</span><span class="t">Cronologia</span><span class="k">Ctrl+H</span></button>' +
@@ -261,8 +261,8 @@ const ACTIONS = {
     if (!engine || !engine.build) return;
     hideSuggest();
     const url = engine.build(el.dataset.q || '');
-    openDedicatedWindow(url);
-    toast('Risultati ' + engine.label + ' aperti in una finestra dedicata', 'ok', 4000);
+    openUrl(url, { newTab: true });
+    toast('Risultati ' + engine.label + ' nella scheda', 'ok', 3500);
   },
   'open-current-external'() {
     const tab = activeTab();

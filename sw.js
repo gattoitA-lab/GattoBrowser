@@ -1,5 +1,5 @@
 /* GattoBrowser service worker — sempre la versione aggiornata, cache solo offline */
-const CACHE = 'gattobrowser-v4';
+const CACHE = 'gattobrowser-v5';
 const CORE = [
   './', './browser.html', './index.html', './manifest.webmanifest',
   './assets/app.css', './assets/app.js', './assets/app-ui.js', './assets/settings.js',
