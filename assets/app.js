@@ -1113,7 +1113,8 @@ function buildWatchPage(tab, ytId, isShort) {
   tab.suspended = false;
   if (typeof renderCredentialBar === 'function') renderCredentialBar(tab);
 
-  ytFetchJson('/streams/' + encodeURIComponent(ytId))
+  const loadMeta = (attempt) => {
+    ytFetchJson('/streams/' + encodeURIComponent(ytId))
     .then((d) => {
       const desc = ytText(d.description || '');
       const live = !!d.livestream;
@@ -1168,8 +1169,14 @@ function buildWatchPage(tab, ytId, isShort) {
       }
     })
     .catch(() => {
-      info.innerHTML = '<div class="yt-msg">Non riesco a leggere i dettagli del video adesso.</div>';
+      if (attempt < 2) { setTimeout(() => loadMeta(attempt + 1), 900); return; }
+      info.innerHTML = '<div class="yt-msg">Non riesco a leggere titolo e descrizione adesso.<br>' +
+        '<button class="btn" id="wRetry">Riprova</button></div>';
+      const again = info.querySelector('#wRetry');
+      if (again) again.onclick = () => buildWatchPage(tab, ytId, isShort);
     });
+  };
+  loadMeta(0);
 
   ytFetchJson('/comments/' + encodeURIComponent(ytId))
     .then((d) => {
