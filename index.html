@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GattoBrowser — il browser veloce e leggero di GattoHub</title>
+<meta name="description" content="GattoBrowser: browser leggerissimo creato da GattoHub. GattoSearch incluso, screenshot verso la chat AI, GattoGuard anti-virus, pagina iniziale personalizzabile. Scaricalo per Windows, Linux, macOS, Android, iPhone, iPad, Xbox e PlayStation.">
+<meta name="theme-color" content="#050505">
+<meta property="og:title" content="GattoBrowser — il browser di GattoHub">
+<meta property="og:description" content="Velocissimo, leggerissimo, con GattoSearch, screenshot verso l'AI e GattoGuard. Per tutte le piattaforme.">
+<meta property="og:image" content="https://gattoita-lab.github.io/GattoBrowser/icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23050505'/%3E%3Cpath d='M16 5l9 5v12l-9 5-9-5V10z' fill='%2300FF66'/%3E%3Cpath d='M16 5l9 5-9 5-9-5z' fill='%23b6ffd2'/%3E%3Cpath d='M16 15v12l-9-5V10z' fill='%2300c24d'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/landing.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">
+      <span class="brand-logo"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3l11 6v14l-11 6-11-6V9z" fill="#04140a"/><path d="M16 8l7 4v9l-7 4-7-4v-9z" fill="#eafff2"/><circle cx="16" cy="16" r="2.6" fill="#04140a"/></svg></span>
+      <span class="brand-txt"><b>GattoBrowser</b><small>by GattoHub</small></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#funzioni">Funzioni</a>
+      <a href="#download">Download</a>
+      <a href="#faq">FAQ</a>
+      <a class="nav-cta" href="browser.html">Apri il browser →</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="wrap hero-in">
+      <div class="hero-copy">
+        <div class="tag">🐾 creato da GattoHub · v1.0</div>
+        <h1>Il browser<span class="neon"> più veloce</span><br>che hai mai aperto.</h1>
+        <p class="sub">GattoBrowser occupa pochissima RAM, si avvia in un battito di ciglia e porta con sé una ricerca tutta sua, lo screenshot che finisce nella chat AI e un anti-virus che decidi tu quando spegnere.</p>
+        <div class="hero-cta">
+          <a class="btn primary big" id="mainDownload" href="browser.html">Scarica per il tuo dispositivo</a>
+          <a class="btn ghost big" href="browser.html">Provalo subito →</a>
+        </div>
+        <div class="hero-stats">
+          <div><b>~28 MB</b><span>RAM tipica</span></div>
+          <div><b>0,4 s</b><span>avvio</span></div>
+          <div><b>8</b><span>piattaforme</span></div>
+          <div><b>0 €</b><span>per sempre</span></div>
+        </div>
+        <p class="detected" id="detected">Rilevo il tuo sistema…</p>
+      </div>
+
+      <div class="mock" aria-hidden="true">
+        <div class="mock-chrome">
+          <div class="mock-tabs"><i class="on"></i><i></i><i></i></div>
+          <div class="mock-bar">
+            <span class="mbtn">‹</span><span class="mbtn">›</span><span class="mbtn">⟳</span>
+            <span class="mock-omni">🔍 gattosearch: browser leggero</span>
+            <span class="mock-shot">📷</span>
+            <span class="mbtn">⋮</span>
+          </div>
+        </div>
+        <div class="mock-body">
+          <div class="mock-line neon-line"><b>🐱 GattoSearch</b><span>6 risultati · 38 ms</span></div>
+          <div class="mock-card"><b>GattoHub — giochi gratis nel browser</b><span>gattoita-lab.github.io › GattoHub</span></div>
+          <div class="mock-card"><b>Browser leggero: come funziona</b><span>Motore del sistema, zero installazioni pesanti</span></div>
+          <div class="mock-card dim"><b>GattoGuard ha bloccato un sito rischioso</b><span>dominio sospetto · HTTP non cifrato</span></div>
+          <div class="mock-fab">📷</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="wrap strip-in">
+      <span>⚡ avvio quasi istantaneo</span><span>🧠 poca RAM davvero</span><span>🔒 nessun tracker di GattoBrowser</span>
+      <span>📷 screenshot → AI</span><span>🛡 GattoGuard</span><span>🎨 home personalizzabile</span>
+    </div>
+  </section>
+
+  <section class="wrap sec" id="funzioni">
+    <h2>Più veloce di tutti gli altri browser</h2>
+    <p class="sec-sub">Nessun motore da scaricare, nessun aggiornamento da 500 MB: GattoBrowser usa il motore già presente nel tuo sistema e aggiunge solo l'interfaccia intelligente. Per questo si apre prima, scalda meno la batteria e lascia libera la RAM per i tuoi giochi.</p>
+
+    <div class="feat-grid">
+      <article class="feat wide">
+        <div class="feat-ic">🔍</div>
+        <h3>GattoSearch, la ricerca creata da noi</h3>
+        <p>Il motore incluso interroga in parallelo l'indice di Wikipedia e le risposte istantanee di DuckDuckGo, poi compone i risultati senza pubblicità. Legge l'URL che digiti, capisce se è un indirizzo o una domanda, e ti mostra i tempi di risposta in millisecondi.</p>
+        <div class="chips"><span>risposte istantanee</span><span>0 pubblicità</span><span>7 motori alternativi</span><span>lettura URL</span></div>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">📷</div>
+        <h3>Screenshot che finisce nell'AI</h3>
+        <p>Premi il pulsante 📷 in alto: GattoBrowser cattura la pagina, copia l'immagine e apre la chat AI di GattoHub. Incolli con Ctrl+V, scrivi e invii.</p>
+        <div class="steps"><span>1 cattura</span><span>2 copia</span><span>3 chat AI</span></div>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">▶</div>
+        <h3>Entra su PlayHub con animazione</h3>
+        <p>Il pulsante d'ingresso apre un'animazione a tutto schermo con le zampette e poi ti porta dentro GattoHub/PlayHub, senza pubblicità e senza attese.</p>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">🛡</div>
+        <h3>GattoGuard anti-virus</h3>
+        <p>Controlla ogni indirizzo prima di aprirlo: connessioni non cifrate, domini a rischio, punycode, IP sospetti. Se ti dà fastidio, lo disattivi in Impostazioni → Privacy e sicurezza.</p>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">🎨</div>
+        <h3>La tua pagina iniziale</h3>
+        <p>Aggiungi i tuoi link, scegli una foto o un video come sfondo, decidi tema e colore d'accento. Tutto viene ricordato sul dispositivo.</p>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">📰</div>
+        <h3>Notizie in un clic</h3>
+        <p>La sezione notizie ti porta su Google News per categoria: ultime notizie, tecnologia, videogiochi, sport, Italia, mondo, AI e scuola.</p>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">⋮</div>
+        <h3>Menu a 3 puntini completo</h3>
+        <p>Profilo, password, cronologia, download, preferiti, gruppi di schede, estensioni, elimina dati, carattere −/+, stampa, Google Lens, traduci, trova, trasmetti e altri strumenti: ogni voce fa davvero qualcosa.</p>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">⚙</div>
+        <h3>13 sezioni di impostazioni</h3>
+        <p>Account, compilazione automatica, privacy, prestazioni, AI, aspetto, motore di ricerca, browser predefinito, avvio, lingue, download, accessibilità e sistema. Con la ricerca interna alle impostazioni.</p>
+      </article>
+
+      <article class="feat">
+        <div class="feat-ic">🖥</div>
+        <h3>Browser predefinito</h3>
+        <p>Installato come app, GattoBrowser diventa una finestra dedicata e può essere scelto come browser predefinito dal sistema. Le istruzioni passo-passo sono incluse per ogni piattaforma.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="wrap sec" id="download">
+    <h2>Scegli la tua piattaforma</h2>
+    <p class="sec-sub">Su computer scarichi un piccolo avvio che apre GattoBrowser come finestra dedicata. Su telefono e console lo installi come app o lo salvi nei preferiti: nessun file pesante, sempre aggiornato.</p>
+    <div class="dl-grid">
+      <article class="dl-card" data-os="win">
+        <div class="dl-ic">🪟</div><h3>Windows</h3><p>Windows 10 e 11</p>
+        <button class="btn primary" data-dl="win">Scarica .bat</button>
+        <small>Avvio rapido in finestra app</small>
+      </article>
+      <article class="dl-card" data-os="linux">
+        <div class="dl-ic">🐧</div><h3>Linux</h3><p>Ubuntu, Fedora, Arch…</p>
+        <button class="btn primary" data-dl="linux">Scarica .sh</button>
+        <small>Poi: chmod +x gattobrowser.sh</small>
+      </article>
+      <article class="dl-card" data-os="mac">
+        <div class="dl-ic">🍎</div><h3>macOS</h3><p>Intel e Apple Silicon</p>
+        <button class="btn primary" data-dl="mac">Scarica .command</button>
+        <small>Doppio clic per aprire</small>
+      </article>
+      <article class="dl-card" data-os="android">
+        <div class="dl-ic">🤖</div><h3>Android</h3><p>Chrome, Edge e altri</p>
+        <button class="btn primary" data-dl="android">Installa app</button>
+        <small>PWA, icona sulla Home</small>
+      </article>
+      <article class="dl-card" data-os="iphone">
+        <div class="dl-ic">📱</div><h3>iPhone</h3><p>iOS 15 o successivo</p>
+        <button class="btn primary" data-dl="ios">Come installare</button>
+        <small>Aggiungi alla schermata Home</small>
+      </article>
+      <article class="dl-card" data-os="ipad">
+        <div class="dl-ic">📟</div><h3>iPad</h3><p>iPadOS</p>
+        <button class="btn primary" data-dl="ios">Come installare</button>
+        <small>Schermo intero con Safari</small>
+      </article>
+      <article class="dl-card" data-os="xbox">
+        <div class="dl-ic">🎮</div><h3>Xbox</h3><p>Xbox One e Series X|S</p>
+        <button class="btn primary" data-dl="xbox">Istruzioni</button>
+        <small>Edge su Xbox + Preferiti</small>
+      </article>
+      <article class="dl-card" data-os="ps">
+        <div class="dl-ic">🕹</div><h3>PlayStation</h3><p>PS4 e PS5</p>
+        <button class="btn primary" data-dl="ps">Istruzioni</button>
+        <small>Browser della console</small>
+      </article>
+    </div>
+    <p class="dl-note">GattoBrowser è un'interfaccia: non contiene un motore di rendering proprio, quindi non scarica 500 MB né duplica i processi del sistema. È questo che lo rende veloce e leggero.</p>
+  </section>
+
+  <section class="wrap sec" id="faq">
+    <h2>Domande veloci</h2>
+    <div class="faq">
+      <details><summary>GattoBrowser è davvero più veloce degli altri browser?</summary><p>Non riscrive il motore: usa quello del sistema e aggiunge solo l'interfaccia. Così non ci sono processi in più da avviare, gli aggiornamenti sono istantanei (è una pagina web) e la RAM extra richiesta è di pochi MB. Su una pagina già aperta è immediato, perché non deve caricare un secondo motore.</p></details>
+      <details><summary>Quanta RAM occupa?</summary><p>L'interfaccia di GattoBrowser usa in genere 20–40 MB di memoria JavaScript, contro centinaia di MB di un browser completo con schede multiple. La scheda del sito che apri usa la memoria del motore che già hai.</p></details>
+      <details><summary>Funziona lo screenshot su qualsiasi sito?</summary><p>Sì: la cattura avviene a livello di scheda con il permesso di condivisione schermo del browser (Chrome/Edge chiedono di scegliere la scheda). GattoBrowser copia l'immagine negli appunti e apre la chat AI: incolli con Ctrl+V.</p></details>
+      <details><summary>Posso davvero impostarlo come browser predefinito?</summary><p>Puoi installarlo come app (PWA) e sceglierlo tra i browser predefiniti del sistema. Nessun sito web può cambiare da solo l'impostazione: GattoBrowser ti mostra i passaggi esatti per Windows, Linux, macOS, Android, iPhone/iPad, Xbox e PlayStation.</p></details>
+      <details><summary>Serve un account?</summary><p>No. Preferiti, cronologia, collegamenti e sfondo restano sul tuo dispositivo. L'accesso mostrato nel menu è solo un profilo locale che puoi personalizzare.</p></details>
+      <details><summary>L'anti-virus posso toglierlo?</summary><p>Sì, da Impostazioni → Privacy e sicurezza: disattiva “GattoGuard” e la protezione smette subito di bloccare gli indirizzi. Puoi anche scegliere la sensibilità tra bassa, media e alta.</p></details>
+      <details><summary>Le notizie sono di GattoBrowser?</summary><p>No: la sezione notizie ti porta su Google News, la fonte originale. GattoBrowser non copia né modifica gli articoli.</p></details>
+    </div>
+  </section>
+
+  <section class="wrap cta-final">
+    <div class="cta-box">
+      <h2>Pronto a navigare con GattoBrowser?</h2>
+      <p>Si apre in un secondo, non chiede permessi strani e funziona su tutto: computer, telefono, tablet e console.</p>
+      <div class="row-c">
+        <a class="btn primary big" href="browser.html">Apri GattoBrowser</a>
+        <a class="btn ghost big" href="https://gattoita-lab.github.io/GattoHub/" target="_blank" rel="noopener">Vai su GattoHub</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div>
+      <b>GattoBrowser</b> · v1.0 — un progetto <a href="https://gattoita-lab.github.io/GattoHub/" target="_blank" rel="noopener">GattoHub</a>
+      <div class="foot-small">Chat AI: <a href="https://private-smart-meow-chat.base44.app/" target="_blank" rel="noopener">private-smart-meow-chat.base44.app</a></div>
+    </div>
+    <div class="foot-links">
+      <a href="browser.html">Apri il browser</a>
+      <a href="#download">Download</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</footer>
+
+<div id="lmodal" class="lmodal hidden"><div class="lmodal-card"><button class="lmodal-x" id="lmodalX">✕</button><div id="lmodalBody"></div></div></div>
+
+<script src="assets/landing.js" defer></script>
+</body>
+</html>
