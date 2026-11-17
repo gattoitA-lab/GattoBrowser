@@ -17,7 +17,7 @@ const LOGO_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3l11 
 
 const ENGINES = {
   gatto: { label: 'GattoSearch', tag: 'di GattoHub', build: null },
-  google: { label: 'Google', tag: 'vieta l\'incorporamento', build: (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q) },
+  google: { label: 'Google', tag: 'dentro GattoBrowser', build: (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q) },
   bing: { label: 'Bing', tag: 'dentro GattoBrowser', build: (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) },
   duckduckgo: { label: 'DuckDuckGo', tag: 'vieta l\'incorporamento', build: (q) => 'https://duckduckgo.com/?q=' + encodeURIComponent(q) },
   wikipedia: { label: 'Wikipedia', tag: 'enciclopedia', build: (q) => 'https://it.wikipedia.org/w/index.php?search=' + encodeURIComponent(q) },
@@ -173,7 +173,7 @@ const DEFAULT_SETTINGS = {
   highContrast: false, largeCaret: false, reducedMotion: false,
   searchEngine: 'gatto', suggestions: true, resultsNewTab: false,
   guard: true, guardLevel: 'medio', blockPopups: true, clearOnExit: false, doNotTrack: true,
-  memorySaver: true, memorySaverMinutes: 5, savingsMode: false, prefetch: true, autoExternal: false,
+  memorySaver: true, memorySaverMinutes: 5, savingsMode: false,   prefetch: true, autoExternal: false, autoWindowHosts: [],
   autofill: true, saveForms: true, savedIdentities: [],
   aiEnabled: true, autoCopyShot: true, aiTarget: CONFIG.chat, aiModel: 'meow-smart',
   startup: 'home', startupLinks: [],
@@ -512,15 +512,44 @@ function youtubeId(url) {
 
 /* YouTube home e risultati: non incorporabili, ma ricostruiti dentro GattoBrowser con l'API di Piped */
 const PIPED_API = 'https://api.piped.private.coffee';
-function youTubeBrowseKind(url) {
+function youTubeRoute(url) {
   try {
     const u = new URL(url);
     if (!/(^|\.)youtube\.com$/i.test(u.hostname)) return null;
-    if (u.pathname === '/' || u.pathname === '') return 'home';
-    if (/^\/feed\/(trending|explore)$/i.test(u.pathname)) return 'home';
-    if (u.pathname === '/results') return 'search';
+    const p = u.pathname;
+    if (p === '/' || p === '') return { type: 'home' };
+    if (/^\/feed\/(trending|explore)$/i.test(p)) return { type: 'home' };
+    if (p === '/results') return { type: 'search', q: u.searchParams.get('search_query') || '' };
+    let m = p.match(/^\/channel\/([^/]+)/);
+    if (m) return { type: 'channel', id: m[1] };
+    m = p.match(/^\/(@[^/]+)/);
+    if (m) return { type: 'channel', handle: decodeURIComponent(m[1]) };
+    m = p.match(/^\/(?:c|user)\/([^/]+)/);
+    if (m) return { type: 'channel', handle: decodeURIComponent(m[1]) };
+    if (p === '/playlist') {
+      const list = u.searchParams.get('list');
+      if (list) return { type: 'playlist', list };
+    }
     return null;
   } catch (e) { return null; }
+}
+function youTubeBrowseKind(url) { const r = youTubeRoute(url); return r ? r.type : null; }
+
+/* Google accetta igu=1: la ricerca si può mostrare dentro GattoBrowser */
+function isGoogleSearchUrl(url) {
+  try {
+    const u = new URL(url);
+    return /(^|\.)google\.[a-z.]+$/i.test(u.hostname) && /^\/(search|webhp)?$/.test(u.pathname);
+  } catch (e) { return false; }
+}
+function embeddableUrl(url) {
+  if (!isGoogleSearchUrl(url)) return url;
+  try {
+    const u = new URL(url);
+    if (!u.searchParams.has('igu')) u.searchParams.set('igu', '1');
+    if (!u.searchParams.has('hl')) u.searchParams.set('hl', 'it');
+    return u.toString();
+  } catch (e) { return url; }
 }
 
 function fmtDuration(sec) {
@@ -550,7 +579,8 @@ const EXTERNAL_HOSTS = [
 
 function isExternalOnly(url) {
   if (youtubeId(url)) return false; // il player è incorporabile
-  if (youTubeBrowseKind(url)) return false; // home e ricerca: pagina interna
+  if (youTubeBrowseKind(url)) return false; // home, ricerca, canali: pagina interna
+  if (isGoogleSearchUrl(url)) return false; // igu=1 permette l'incorporamento
   if (EMBED_BLOCKERS.some((rx) => rx.test(url))) return true;
   const host = hostOf(url);
   if (!host) return false;
@@ -559,7 +589,7 @@ function isExternalOnly(url) {
 
 function navigate(tab, rawUrl, opts) {
   const o = opts || {};
-  const url = normalizeUrl(rawUrl);
+  const url = embeddableUrl(normalizeUrl(rawUrl));
   if (!url) return;
   const g = guardCheck(url);
   tab.url = url;
@@ -849,12 +879,60 @@ function buildWeb(tab) {
   }, 4200);
 }
 
-/* YouTube dentro GattoBrowser: elenco video dall'API Piped, riproduzione col player nativo */
+/* YouTube dentro GattoBrowser: home, ricerca con filtri, canali e playlist */
+function ytApi(path) { return (S.pipedApi || PIPED_API) + path; }
+
+function fmtSubs(n) {
+  const v = Number(n) || 0;
+  if (v >= 1000000) return (v / 1000000).toFixed(1).replace('.', ',') + ' mln di iscritti';
+  if (v >= 1000) return Math.round(v / 1000) + ' mila iscritti';
+  return v + ' iscritti';
+}
+
+function ytItemCard(it, tab) {
+  if (!it) return null;
+  const url = String(it.url || '');
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'yt-card';
+
+  if (it.type === 'channel' || /^\/channel\//.test(url)) {
+    card.innerHTML =
+      '<div class="yt-chan"><img class="yt-avatar" loading="lazy" alt="" src="' + esc(it.thumbnail || '') + '"></div>' +
+      '<b>' + esc(it.name || 'Canale') + '</b>' +
+      '<small>' + esc(it.subscribers ? fmtSubs(it.subscribers) : '') + '</small>' +
+      (it.description ? '<small class="yt-desc">' + esc(it.description) + '</small>' : '');
+    card.onclick = () => navigate(tab, 'https://www.youtube.com' + url, { replace: true });
+    return card;
+  }
+
+  if (it.type === 'playlist' || /^\/playlist/.test(url)) {
+    card.innerHTML =
+      '<div class="yt-thumb"><img loading="lazy" alt="" src="' + esc(it.thumbnail || '') + '">' +
+        '<span class="yt-dur">playlist</span></div>' +
+      '<b>' + esc(it.name || 'Playlist') + '</b>' +
+      '<small>' + esc(it.uploaderName || '') + (it.videos ? ' · ' + it.videos + ' video' : '') + '</small>';
+    card.onclick = () => navigate(tab, 'https://www.youtube.com' + url, { replace: true });
+    return card;
+  }
+
+  const vid = (url.match(/v=([\w-]{6,})/) || [])[1];
+  if (!vid) return null;
+  card.innerHTML =
+    '<div class="yt-thumb"><img loading="lazy" alt="" src="' + esc(it.thumbnail || ('https://i.ytimg.com/vi/' + vid + '/hqdefault.jpg')) + '">' +
+    (it.duration ? '<span class="yt-dur">' + esc(fmtDuration(it.duration)) + '</span>' : '') + '</div>' +
+    '<b>' + esc(it.title || 'Video') + '</b>' +
+    '<small>' + esc(it.uploaderName || '') + (it.views ? ' · ' + esc(fmtViews(it.views)) : '') + '</small>';
+  card.onclick = () => openUrl('https://www.youtube.com/watch?v=' + vid, { newTab: true });
+  return card;
+}
+
 function buildYouTubeApp(tab) {
   const pane = tab.pane;
-  const kind = youTubeBrowseKind(tab.url);
-  let q = '';
-  try { q = new URL(tab.url).searchParams.get('search_query') || ''; } catch (e) { q = ''; }
+  const route = youTubeRoute(tab.url) || { type: 'home' };
+  const q = route.q || '';
+  if (route.type !== 'search') tab.ytFilter = 'all';
+  const filter = tab.ytFilter || 'all';
 
   pane.innerHTML = '';
   const wrap = document.createElement('div');
@@ -862,9 +940,13 @@ function buildYouTubeApp(tab) {
   wrap.innerHTML =
     '<div class="yt-top">' +
       '<b class="yt-brand">▶ YouTube</b>' +
-      '<form class="yt-form"><input id="ytQ" type="search" placeholder="Cerca video su YouTube" value="' + esc(q) + '"><button class="btn primary" type="submit">Cerca</button></form>' +
+      '<form class="yt-form"><input id="ytQ" type="search" placeholder="Cerca video, canali e playlist" value="' + esc(q) + '"><button class="btn primary" type="submit">Cerca</button></form>' +
       '<span class="tag">dentro GattoBrowser</span>' +
     '</div>' +
+    (route.type === 'search'
+      ? '<div class="yt-chips">' + [['all', 'Tutti'], ['videos', 'Video'], ['channels', 'Canali'], ['playlists', 'Playlist']]
+          .map((p) => '<button type="button" class="yt-chip' + (p[0] === filter ? ' on' : '') + '" data-f="' + p[0] + '">' + p[1] + '</button>').join('') + '</div>'
+      : '') +
     '<div class="yt-grid" id="ytGrid"><div class="yt-msg">Carico i video…</div></div>';
   pane.appendChild(wrap);
 
@@ -874,40 +956,59 @@ function buildYouTubeApp(tab) {
     const v = wrap.querySelector('#ytQ').value.trim();
     if (v) navigate(tab, 'https://www.youtube.com/results?search_query=' + encodeURIComponent(v), { replace: true });
   };
+  wrap.querySelectorAll('[data-f]').forEach((b) => {
+    b.onclick = () => { tab.ytFilter = b.dataset.f; buildYouTubeApp(tab); };
+  });
   tab.suspended = false;
 
-  const api = (S.pipedApi || PIPED_API);
-  const endpoint = kind === 'search'
-    ? api + '/search?q=' + encodeURIComponent(q) + '&filter=videos'
-    : api + '/trending?region=IT';
+  let endpoint;
+  if (route.type === 'search') endpoint = ytApi('/search?q=' + encodeURIComponent(q) + '&filter=' + filter);
+  else if (route.type === 'playlist') endpoint = ytApi('/playlist?list=' + encodeURIComponent(route.list));
+  else if (route.type === 'channel') {
+    endpoint = route.id
+      ? ytApi('/channel/' + encodeURIComponent(route.id))
+      : ytApi('/c/' + encodeURIComponent(String(route.handle || '').replace(/^@/, '')));
+  } else endpoint = ytApi('/trending?region=IT');
 
-  fetch(endpoint).then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+  fetch(endpoint)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
     .then((data) => {
-      const items = (Array.isArray(data) ? data : (data && data.items) || []).filter((i) => i && i.url && /v=[\w-]{6,}/.test(i.url));
-      if (!items.length) throw new Error('nessun video');
+      let items = [];
+      if (route.type === 'playlist') items = (data && data.videos) || [];
+      else if (route.type === 'channel') items = (data && data.relatedStreams) || [];
+      else items = Array.isArray(data) ? data : ((data && data.items) || []);
+
+      if (route.type === 'channel' || route.type === 'playlist') {
+        const head = document.createElement('div');
+        head.className = 'yt-head';
+        const banner = route.type === 'channel' ? (data.bannerUrl || '') : (data.thumbnailUrl || '');
+        const name = data.name || data.uploader || 'Canale';
+        const avatar = route.type === 'channel' ? (data.avatarUrl || '') : (data.uploaderAvatar || '');
+        const sub = route.type === 'channel'
+          ? fmtSubs(data.subscriberCount)
+          : ((data.uploader || '') + (data.videoCount ? ' · ' + data.videoCount + ' video' : ''));
+        head.innerHTML =
+          (banner ? '<div class="yt-banner" style="background-image:url(' + esc(banner) + ')"></div>' : '') +
+          '<div class="yt-headrow">' + (avatar ? '<img class="yt-avatar" alt="" src="' + esc(avatar) + '">' : '') +
+          '<div><b>' + esc(name) + '</b><small>' + esc(sub) + '</small></div></div>' +
+          (data.description ? '<p class="yt-desc">' + esc(String(data.description).slice(0, 280)) + '</p>' : '');
+        wrap.insertBefore(head, grid);
+      }
+
       grid.innerHTML = '';
-      items.slice(0, 24).forEach((it) => {
-        const id = (String(it.url).match(/v=([\w-]{6,})/) || [])[1];
-        if (!id) return;
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'yt-card';
-        card.innerHTML =
-          '<div class="yt-thumb"><img loading="lazy" alt="" src="' + esc(it.thumbnail || ('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg')) + '">' +
-          (it.duration ? '<span class="yt-dur">' + esc(fmtDuration(it.duration)) + '</span>' : '') + '</div>' +
-          '<b>' + esc(it.title || 'Video') + '</b>' +
-          '<small>' + esc(it.uploaderName || '') + (it.views ? ' · ' + esc(fmtViews(it.views)) : '') + '</small>';
-        card.onclick = () => openUrl('https://www.youtube.com/watch?v=' + id, { newTab: true });
-        grid.appendChild(card);
+      let count = 0;
+      items.forEach((it) => {
+        const card = ytItemCard(it, tab);
+        if (card) { grid.appendChild(card); count++; }
       });
-      $('#statusMsg').textContent = 'YouTube dentro GattoBrowser · ' + items.length + ' video';
+      if (!count) grid.innerHTML = '<div class="yt-msg">Nessun risultato per questo filtro.</div>';
+      $('#statusMsg').textContent = 'YouTube dentro GattoBrowser · ' + count + ' risultati';
     })
     .catch(() => {
       grid.innerHTML =
-        '<div class="yt-msg"><b>Non riesco a caricare i video adesso</b><br>' +
-        'Il servizio che legge YouTube non risponde: puoi cercare su Bing oppure aprire YouTube in una finestra.<br>' +
-        '<button class="btn" data-act="open-external" data-url="' + esc(tab.url) + '">Apri YouTube in finestra ↗</button> ' +
-        '<button class="btn" data-act="open-settings" data-sec="search">Cambia servizio</button></div>';
+        '<div class="yt-msg"><b>Non riesco a caricare adesso</b><br>' +
+        'Il servizio che legge YouTube non risponde: prova a cercare su Bing o apri YouTube in una finestra.<br>' +
+        '<button class="btn" data-act="open-external" data-url="' + esc(tab.url) + '">Apri YouTube in finestra ↗</button></div>';
     });
 }
 
@@ -940,6 +1041,7 @@ function buildExternalPane(tab) {
         '<button class="btn' + (googleQuery ? '' : ' primary') + '" data-open-here>Apri in una finestra dedicata ↗</button>' +
         '<button class="btn" data-act="copy-link" data-url="' + esc(url) + '">Copia link</button>' +
       '</div>' +
+      '<label class="remember"><input type="checkbox" id="awH"> Ricorda: apri sempre in finestra i siti di ' + esc(hostOf(url) || 'questo sito') + '</label>' +
       '<div style="font-size:11.5px;color:var(--muted);max-width:100%">Nessuna finestra si apre da sola: premi tu il pulsante quando vuoi. Puoi attivare l\'apertura automatica in Impostazioni → Privacy.</div>' +
     '</div>';
   pane.appendChild(wrap);
@@ -947,7 +1049,26 @@ function buildExternalPane(tab) {
   wrap.querySelector('[data-force]').onclick = () => { tab.forceEmbed = true; refreshTab(tab); };
   const bingBtn = wrap.querySelector('[data-bing]');
   if (bingBtn) bingBtn.onclick = () => navigate(tab, 'https://www.bing.com/search?q=' + encodeURIComponent(googleQuery), { replace: true });
-  if (S.autoExternal && (typeof hasGesture !== 'function' || hasGesture())) openDedicatedWindow(url);
+
+  const host = hostOf(url);
+  const remembered = Array.isArray(S.autoWindowHosts) && host && S.autoWindowHosts.indexOf(host) !== -1;
+  const chk = wrap.querySelector('#awH');
+  if (chk) {
+    chk.checked = !!remembered;
+    chk.onchange = () => {
+      const list = Array.isArray(S.autoWindowHosts) ? S.autoWindowHosts.slice() : [];
+      const i = host ? list.indexOf(host) : -1;
+      if (chk.checked && host && i === -1) list.push(host);
+      if (!chk.checked && i !== -1) list.splice(i, 1);
+      S.autoWindowHosts = list;
+      save();
+      toast(chk.checked ? 'Ricordato: ' + host + ' si apre in finestra' : 'Preferenza rimossa per ' + host, 'ok', 3500);
+    };
+  }
+  if (!tab.autoWindowed && (remembered || S.autoExternal) && (typeof hasGesture !== 'function' || hasGesture())) {
+    tab.autoWindowed = true;
+    openDedicatedWindow(url);
+  }
 }
 
 function suspendTab(tab) {
