@@ -22,8 +22,142 @@ const ENGINES = {
   duckduckgo: { label: 'DuckDuckGo', tag: 'esterno', build: (q) => 'https://duckduckgo.com/?q=' + encodeURIComponent(q) },
   wikipedia: { label: 'Wikipedia', tag: 'enciclopedia', build: (q) => 'https://it.wikipedia.org/w/index.php?search=' + encodeURIComponent(q) },
   youtube: { label: 'YouTube', tag: 'video', build: (q) => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) },
+  brave: { label: 'Brave', tag: 'esterno', build: (q) => 'https://search.brave.com/search?q=' + encodeURIComponent(q) },
   github: { label: 'GitHub', tag: 'codice', build: (q) => 'https://github.com/search?q=' + encodeURIComponent(q) }
 };
+
+/* Indice locale dei siti più cercati: risultati istantanei, senza rete */
+const POPULAR_SITES = [
+  { name: 'Duolingo', url: 'https://www.duolingo.com/', keys: ['duolingo', 'lingue', 'impara lingue', 'inglese'] },
+  { name: 'Duolingo English Test', url: 'https://englishtest.duolingo.com/', keys: ['duolingo test', 'english test', 'certificazione inglese'] },
+  { name: 'YouTube', url: 'https://www.youtube.com/', keys: ['youtube', 'video', 'musica'] },
+  { name: 'Google', url: 'https://www.google.com/', keys: ['google'] },
+  { name: 'Google News', url: 'https://news.google.com/', keys: ['google news', 'notizie'] },
+  { name: 'Google Maps', url: 'https://maps.google.com/', keys: ['maps', 'mappe', 'indicazioni'] },
+  { name: 'Gmail', url: 'https://mail.google.com/', keys: ['gmail', 'email', 'posta'] },
+  { name: 'Google Drive', url: 'https://drive.google.com/', keys: ['drive', 'google drive'] },
+  { name: 'GattoHub', url: 'https://gattoita-lab.github.io/GattoHub/', keys: ['gattohub', 'playhub', 'giochi'] },
+  { name: 'Wikipedia', url: 'https://it.wikipedia.org/', keys: ['wikipedia', 'enciclopedia'] },
+  { name: 'Amazon', url: 'https://www.amazon.it/', keys: ['amazon', 'shopping', 'acquisti'] },
+  { name: 'Netflix', url: 'https://www.netflix.com/', keys: ['netflix', 'film', 'serie tv'] },
+  { name: 'Prime Video', url: 'https://www.primevideo.com/', keys: ['prime video', 'amazon video'] },
+  { name: 'Disney+', url: 'https://www.disneyplus.com/', keys: ['disney', 'disney plus'] },
+  { name: 'Spotify', url: 'https://open.spotify.com/', keys: ['spotify', 'musica'] },
+  { name: 'Twitch', url: 'https://www.twitch.tv/', keys: ['twitch', 'streaming'] },
+  { name: 'TikTok', url: 'https://www.tiktok.com/', keys: ['tiktok', 'video brevi'] },
+  { name: 'Instagram', url: 'https://www.instagram.com/', keys: ['instagram', 'foto'] },
+  { name: 'Facebook', url: 'https://www.facebook.com/', keys: ['facebook', 'social'] },
+  { name: 'WhatsApp', url: 'https://web.whatsapp.com/', keys: ['whatsapp', 'messaggi'] },
+  { name: 'Telegram', url: 'https://web.telegram.org/', keys: ['telegram'] },
+  { name: 'Discord', url: 'https://discord.com/app', keys: ['discord', 'chat vocale'] },
+  { name: 'X (Twitter)', url: 'https://x.com/', keys: ['twitter', 'x', 'tweet'] },
+  { name: 'Reddit', url: 'https://www.reddit.com/', keys: ['reddit', 'forum'] },
+  { name: 'Pinterest', url: 'https://www.pinterest.com/', keys: ['pinterest', 'idee'] },
+  { name: 'LinkedIn', url: 'https://www.linkedin.com/', keys: ['linkedin', 'lavoro'] },
+  { name: 'GitHub', url: 'https://github.com/', keys: ['github', 'codice', 'programmare'] },
+  { name: 'ChatGPT', url: 'https://chatgpt.com/', keys: ['chatgpt', 'openai', 'ai'] },
+  { name: 'Gemini', url: 'https://gemini.google.com/', keys: ['gemini', 'google ai'] },
+  { name: 'Claude', url: 'https://claude.ai/', keys: ['claude', 'anthropic'] },
+  { name: 'Canva', url: 'https://www.canva.com/', keys: ['canva', 'grafica'] },
+  { name: 'Steam', url: 'https://store.steampowered.com/', keys: ['steam', 'giochi pc'] },
+  { name: 'Roblox', url: 'https://www.roblox.com/', keys: ['roblox'] },
+  { name: 'Minecraft', url: 'https://www.minecraft.net/', keys: ['minecraft'] },
+  { name: 'Epic Games', url: 'https://store.epicgames.com/', keys: ['epic games', 'fortnite'] },
+  { name: 'PlayStation Store', url: 'https://store.playstation.com/', keys: ['playstation', 'ps store'] },
+  { name: 'Xbox', url: 'https://www.xbox.com/', keys: ['xbox'] },
+  { name: 'Nintendo', url: 'https://www.nintendo.it/', keys: ['nintendo', 'switch'] },
+  { name: 'eBay', url: 'https://www.ebay.it/', keys: ['ebay', 'aste'] },
+  { name: 'Subito', url: 'https://www.subito.it/', keys: ['subito', 'annunci'] },
+  { name: 'Vinted', url: 'https://www.vinted.it/', keys: ['vinted', 'vestiti usati'] },
+  { name: 'AliExpress', url: 'https://it.aliexpress.com/', keys: ['aliexpress'] },
+  { name: 'Temu', url: 'https://www.temu.com/', keys: ['temu'] },
+  { name: 'Shein', url: 'https://it.shein.com/', keys: ['shein'] },
+  { name: 'Booking.com', url: 'https://www.booking.com/', keys: ['booking', 'hotel'] },
+  { name: 'Airbnb', url: 'https://www.airbnb.it/', keys: ['airbnb', 'affitto'] },
+  { name: 'Trenitalia', url: 'https://www.trenitalia.com/', keys: ['trenitalia', 'treni'] },
+  { name: 'Italo', url: 'https://www.italotreno.it/', keys: ['italo', 'treno veloce'] },
+  { name: 'Poste Italiane', url: 'https://www.poste.it/', keys: ['poste', 'poste italiane'] },
+  { name: 'INPS', url: 'https://www.inps.it/', keys: ['inps', 'pensioni'] },
+  { name: 'Agenzia delle Entrate', url: 'https://www.agenziaentrate.gov.it/', keys: ['agenzia entrate', 'tasse'] },
+  { name: 'PayPal', url: 'https://www.paypal.com/it/', keys: ['paypal', 'pagamenti'] },
+  { name: 'Satispay', url: 'https://www.satispay.com/', keys: ['satispay'] },
+  { name: 'UniCredit', url: 'https://www.unicredit.it/', keys: ['unicredit', 'banca'] },
+  { name: 'Intesa Sanpaolo', url: 'https://www.intesasanpaolo.com/', keys: ['intesa', 'sanpaolo'] },
+  { name: 'RaiPlay', url: 'https://www.raiplay.it/', keys: ['raiplay', 'rai', 'tv italiana'] },
+  { name: 'Mediaset Infinity', url: 'https://mediasetinfinity.mediaset.it/', keys: ['mediaset', 'infinity', 'tv'] },
+  { name: 'DAZN', url: 'https://www.dazn.com/', keys: ['dazn', 'calcio'] },
+  { name: 'Sky', url: 'https://www.sky.it/', keys: ['sky', 'sky q'] },
+  { name: 'La Gazzetta dello Sport', url: 'https://www.gazzetta.it/', keys: ['gazzetta', 'sport'] },
+  { name: 'Corriere della Sera', url: 'https://www.corriere.it/', keys: ['corriere', 'notizie'] },
+  { name: 'la Repubblica', url: 'https://www.repubblica.it/', keys: ['repubblica'] },
+  { name: 'Il Post', url: 'https://www.ilpost.it/', keys: ['il post', 'post'] },
+  { name: 'ANSA', url: 'https://www.ansa.it/', keys: ['ansa'] },
+  { name: 'Zoom', url: 'https://zoom.us/', keys: ['zoom', 'videocall'] },
+  { name: 'Outlook', url: 'https://outlook.live.com/', keys: ['outlook', 'hotmail', 'mail'] },
+  { name: 'Microsoft', url: 'https://www.microsoft.com/', keys: ['microsoft', 'windows'] },
+  { name: 'Apple', url: 'https://www.apple.com/', keys: ['apple', 'iphone'] },
+  { name: 'iCloud', url: 'https://www.icloud.com/', keys: ['icloud'] },
+  { name: 'Khan Academy', url: 'https://it.khanacademy.org/', keys: ['khan academy', 'matematica'] },
+  { name: 'Quizlet', url: 'https://quizlet.com/', keys: ['quizlet', 'flashcard'] },
+  { name: 'Coursera', url: 'https://www.coursera.org/', keys: ['coursera', 'corsi'] },
+  { name: 'Udemy', url: 'https://www.udemy.com/', keys: ['udemy', 'corsi'] },
+  { name: 'Bing', url: 'https://www.bing.com/', keys: ['bing'] },
+  { name: 'DuckDuckGo', url: 'https://duckduckgo.com/', keys: ['duckduckgo', 'ddg'] },
+  { name: 'Brave Search', url: 'https://search.brave.com/', keys: ['brave'] },
+  { name: 'Ecosia', url: 'https://www.ecosia.org/', keys: ['ecosia'] },
+  { name: 'Yahoo', url: 'https://it.yahoo.com/', keys: ['yahoo'] },
+  { name: 'Trenord', url: 'https://www.trenord.it/', keys: ['trenord', 'treni lombardia'] },
+  { name: 'ATM Milano', url: 'https://www.atm.it/', keys: ['atm', 'metro milano'] },
+  { name: 'Trenitalia Regionale', url: 'https://www.lefrecce.it/', keys: ['le frecce', 'biglietti treno'] },
+  { name: 'Wattpad', url: 'https://www.wattpad.com/', keys: ['wattpad', 'storie'] },
+  { name: 'Goodreads', url: 'https://www.goodreads.com/', keys: ['goodreads', 'libri'] },
+  { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/', keys: ['crunchyroll', 'anime'] },
+  { name: 'HBO Max', url: 'https://www.hbomax.com/', keys: ['hbo', 'max'] },
+  { name: 'Google Translate', url: 'https://translate.google.com/', keys: ['traduttore', 'tradurre', 'translate'] }
+];
+
+function normText(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function searchPopularSites(q) {
+  const nq = normText(q);
+  if (!nq) return [];
+  const scored = [];
+  POPULAR_SITES.forEach((site) => {
+    const keys = [site.name].concat(site.keys || []).map(normText);
+    let score = 0;
+    keys.forEach((k) => {
+      if (k === nq) score = Math.max(score, 100);
+      else if (k.indexOf(nq) === 0) score = Math.max(score, 85);
+      else if (nq.indexOf(k) === 0 && k.length >= 3) score = Math.max(score, 70);
+      else if (k.length >= 4 && (k.indexOf(nq) >= 0 || nq.indexOf(k) >= 0)) score = Math.max(score, 45);
+    });
+    if (score) scored.push({ name: site.name, url: site.url, score: score });
+  });
+  const seen = {};
+  return scored.sort((a, b) => b.score - a.score).filter((s) => {
+    if (seen[s.url]) return false;
+    seen[s.url] = 1;
+    return true;
+  }).slice(0, 4);
+}
+
+/* Se la ricerca è una parola sola, prova il dominio ufficiale (.com/.it/.org) */
+async function probeDomain(q) {
+  const clean = normText(q).replace(/ /g, '');
+  if (!clean || clean.length < 3 || clean.length > 24) return null;
+  const candidates = ['.com', '.it', '.org'].map((t) => 'https://' + clean + t);
+  const results = await Promise.all(candidates.map((url) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 2200);
+    return fetch(url, { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal })
+      .then(() => { clearTimeout(timer); return url; })
+      .catch(() => { clearTimeout(timer); return null; });
+  }));
+  return results.find(Boolean) || null;
+}
 
 const DEFAULT_HOME_LINKS = [
   { title: 'GattoHub', url: CONFIG.hub },
@@ -620,13 +754,34 @@ function buildWeb(tab) {
     frame.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-modals allow-downloads allow-pointer-lock allow-presentation');
   }
   host.appendChild(frame);
+
+  const floatBtn = document.createElement('button');
+  floatBtn.className = 'openfloat';
+  floatBtn.type = 'button';
+  floatBtn.title = 'Apri questo sito in una finestra dedicata';
+  floatBtn.textContent = '↗';
+  floatBtn.onclick = () => openDedicatedWindow(tab.url);
+  host.appendChild(floatBtn);
+
   pane.appendChild(host);
   tab.frame = frame;
   tab.suspended = false;
   if (typeof renderCredentialBar === 'function') renderCredentialBar(tab);
+
+  let frameLoaded = false;
   frame.addEventListener('load', () => {
+    frameLoaded = true;
     $('#statusMsg').textContent = 'Caricato: ' + prettyHost(tab.url);
   });
+  setTimeout(() => {
+    if (frameLoaded || tab.pane !== pane || tab.suspended) return;
+    if (host.querySelector('.load-warn')) return;
+    const warn = document.createElement('div');
+    warn.className = 'embed-note load-warn';
+    warn.innerHTML = '<b>Non si carica?</b> Questo sito probabilmente vieta l\'incorporamento.' +
+      '<button data-act="open-external" data-url="' + esc(tab.url) + '">Apri in finestra ↗</button>';
+    host.insertBefore(warn, host.firstChild);
+  }, 4200);
 }
 
 function openDedicatedWindow(url) {
@@ -747,17 +902,40 @@ async function ddgSearch(q) {
 async function buildSearch(tab) {
   const pane = tab.pane;
   const q = tab.query;
+  const siteHits = searchPopularSites(q);
+  const engineKeys = ['google', 'bing', 'duckduckgo', 'brave'];
+
   pane.innerHTML =
     '<div class="sr">' +
-      '<div class="sr-top"><span class="glogo">🐱 GattoSearch</span><span class="stats" id="srStats">ricerca in corso…</span></div>' +
+      '<div class="sr-top"><span class="glogo">🐱 GattoSearch</span><span class="stats" id="srStats">ricerca…</span></div>' +
       '<h2 class="sr-q">' + esc(q) + '</h2>' +
-      '<div class="sr-tabs">' +
-        '<button data-act="pick-engine" data-engine="gatto" class="' + (S.searchEngine === 'gatto' ? 'on' : '') + '">GattoSearch</button>' +
-        '<button data-act="news-open" data-url="' + esc('https://news.google.com/search?hl=it&gl=IT&ceid=IT:it&q=' + encodeURIComponent(q)) + '">📰 Notizie</button>' +
-        Object.keys(ENGINES).filter((k) => k !== 'gatto').map((k) => '<button data-act="search-on" data-engine="' + k + '" data-q="' + esc(q) + '">' + esc(ENGINES[k].label) + ' →</button>').join('') +
+      '<div class="sr-enginebar">' +
+        '<span class="sr-hint">Risultati web:</span>' +
+        engineKeys.map((k) => '<button class="engine-btn" data-act="engine-search" data-engine="' + k + '" data-q="' + esc(q) + '">' + esc(ENGINES[k].label) + ' ↗</button>').join('') +
+        '<button class="engine-btn" data-act="news-open" data-url="' + esc('https://news.google.com/search?hl=it&gl=IT&ceid=IT:it&q=' + encodeURIComponent(q)) + '">📰 Notizie</button>' +
       '</div>' +
-      '<div id="srBody"><div class="skeleton"></div><div class="skeleton" style="margin-top:10px"></div><div class="skeleton" style="margin-top:10px"></div></div>' +
+      '<div id="srInstant"></div>' +
+      '<div id="srAnswer"></div>' +
+      '<div id="srWeb"><div class="skeleton"></div><div class="skeleton" style="margin-top:10px"></div><div class="skeleton" style="margin-top:10px"></div></div>' +
+      '<div id="srMore"></div>' +
+      '<div class="set-note" style="max-width:100%">GattoSearch mostra <b>siti ufficiali</b>, <b>Wikipedia</b> e <b>risposte istantanee</b>: sono le fonti che un sito web può leggere direttamente. Per tutti i risultati di <b>Google</b>, <b>Bing</b>, <b>DuckDuckGo</b> o <b>Brave</b> usa i pulsanti qui sopra: si aprono in una finestra dedicata con i risultati veri del motore, in un clic.</div>' +
     '</div>';
+
+  renderInstantSites(pane, q, siteHits);
+
+  if (!/\s/.test(String(q).trim()) && !siteHits.length) {
+    probeDomain(q).then((guess) => {
+      if (!guess || tab.pane !== pane) return;
+      const box = $('#srInstant', pane);
+      if (!box || box.dataset.guess) return;
+      box.dataset.guess = '1';
+      box.innerHTML = '<div class="sec-head" style="margin:2px 0 8px"><h3>Sito ufficiale</h3><span class="hint">dominio trovato</span></div>' +
+        '<div class="instant-grid"><a class="instant-card" href="' + esc(guess) + '" data-act="open-url" data-url="' + esc(guess) + '">' +
+        '<span class="fav-ic">' + esc(favLetter(prettyHost(guess))) + '</span>' +
+        '<span class="ic-txt"><b>' + esc(prettyHost(guess)) + '</b><small>sito ufficiale</small></span>' +
+        '<span class="ic-go">Vai →</span></a></div>' + box.innerHTML;
+    });
+  }
 
   const t0 = performance.now();
   const [wiki, ddg] = await Promise.allSettled([wikiSearch(q), ddgSearch(q)]);
@@ -765,34 +943,58 @@ async function buildSearch(tab) {
   const wikiHits = wiki.status === 'fulfilled' ? wiki.value : [];
   const ddgHits = ddg.status === 'fulfilled' ? ddg.value : [];
   const ms = Math.round(performance.now() - t0);
-  const body = $('#srBody', pane);
-  if (!body) return;
+
+  const answerBox = $('#srAnswer', pane);
+  const webBox = $('#srWeb', pane);
+  const moreBox = $('#srMore', pane);
+  if (!webBox) return;
 
   const abstract = ddgHits.find((h) => h.abstract);
-  let html = '';
-  if (abstract) {
-    html += '<div class="answer"><h4>' + esc(abstract.title) + '</h4><p>' + esc(abstract.snippet) + '</p>' +
-      (abstract.url ? '<a class="src" href="' + esc(abstract.url) + '" data-act="open-url" data-url="' + esc(abstract.url) + '">' + esc(prettyHost(abstract.url)) + ' ↗</a>' : '') + '</div>';
+  if (answerBox) {
+    answerBox.innerHTML = abstract
+      ? '<div class="answer"><h4>' + esc(abstract.title) + '</h4><p>' + esc(abstract.snippet) + '</p>' +
+        (abstract.url ? '<a class="src" href="' + esc(abstract.url) + '" data-act="open-url" data-url="' + esc(abstract.url) + '">' + esc(prettyHost(abstract.url)) + ' ↗</a>' : '') + '</div>'
+      : '';
   }
+
   const seen = {};
-  const hits = wikiHits.concat(ddgHits.filter((h) => !h.abstract));
-  hits.forEach((hit) => {
-    if (!hit.url || seen[hit.url]) return;
-    seen[hit.url] = 1;
-    html += '<a class="sr-hit" href="' + esc(hit.url) + '" data-act="open-url" data-url="' + esc(hit.url) + '">' +
+  const hits = [];
+  wikiHits.forEach((h) => { if (h.url && !seen[h.url]) { seen[h.url] = 1; hits.push(h); } });
+  ddgHits.filter((h) => !h.abstract).forEach((h) => { if (h.url && !seen[h.url]) { seen[h.url] = 1; hits.push(h); } });
+
+  webBox.innerHTML = hits.map((hit) =>
+    '<a class="sr-hit" href="' + esc(hit.url) + '" data-act="open-url" data-url="' + esc(hit.url) + '">' +
       (hit.thumb ? '<img class="th" src="' + esc(hit.thumb) + '" alt="" loading="lazy">' : '') +
       '<span class="u">' + esc(hit.source) + ' · ' + esc(prettyHost(hit.url)) + '</span>' +
       '<div class="t">' + esc(hit.title) + '</div>' +
       '<div class="d">' + esc(hit.snippet || '') + '</div>' +
-    '</a>';
-  });
-  if (!hits.length) {
-    html += '<div class="empty-state"><div class="big">🐾</div>Nessun risultato nell\'indice libero per <b>' + esc(q) + '</b>.<br>Prova GattoSearch su un motore esterno qui sopra.</div>';
+    '</a>').join('');
+
+  if (moreBox) {
+    moreBox.innerHTML =
+      '<div class="sr-more">' +
+        ['google', 'bing', 'duckduckgo'].map((k) => '<button class="engine-mini" data-act="engine-search" data-engine="' + k + '" data-q="' + esc(q) + '">Cerca “' + esc(q) + '” su ' + esc(ENGINES[k].label) + ' ↗</button>').join('') +
+      '</div>';
   }
-  body.innerHTML = html;
+
+  const total = siteHits.length + hits.length + (abstract ? 1 : 0);
   const stats = $('#srStats', pane);
-  if (stats) stats.textContent = hits.length + ' risultati · ' + ms + ' ms · indice Wikipedia + DuckDuckGo';
+  if (stats) stats.textContent = total + ' risultati · ' + ms + ' ms · siti ufficiali + Wikipedia + DuckDuckGo';
   $('#memInfo').textContent = 'RAM ' + memEstimate();
+  $('#statusMsg').textContent = 'GattoSearch: ' + total + ' risultati in ' + ms + ' ms';
+}
+
+function renderInstantSites(pane, q, siteHits) {
+  const box = $('#srInstant', pane);
+  if (!box) return;
+  if (!siteHits.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="sec-head" style="margin:2px 0 8px"><h3>Siti ufficiali</h3><span class="hint">istantaneo</span></div>' +
+    '<div class="instant-grid">' + siteHits.map((s) =>
+      '<a class="instant-card" href="' + esc(s.url) + '" data-act="open-url" data-url="' + esc(s.url) + '">' +
+        '<span class="fav-ic">' + esc(favLetter(s.name)) + '</span>' +
+        '<span class="ic-txt"><b>' + esc(s.name) + '</b><small>' + esc(prettyHost(s.url)) + '</small></span>' +
+        '<span class="ic-go">Apri →</span>' +
+      '</a>').join('') + '</div>';
 }
 
 function memEstimate() {

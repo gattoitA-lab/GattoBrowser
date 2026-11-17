@@ -78,6 +78,9 @@ function showSuggest(input) {
   const box = $('#suggest');
   const rows = [];
   if (q) {
+    searchPopularSites(q).slice(0, 3).forEach((s) => {
+      rows.push({ act: 'open-url', url: s.url, ico: '⭐', txt: s.name, tag: 'sito ufficiale' });
+    });
     if (isUrlLike(q)) rows.push({ act: 'open-url', url: normalizeUrl(q), ico: '🌐', txt: normalizeUrl(q), tag: 'apri' });
     rows.push({ act: 'do-search', q, ico: '🐱', txt: 'Cerca “' + q + '” con GattoSearch', tag: 'GattoSearch' });
     Object.keys(ENGINES).filter((k) => k !== 'gatto').slice(0, 3).forEach((k) => {
@@ -252,12 +255,19 @@ const ACTIONS = {
     if (st) refreshTab(st);
   },
   'do-search'(el) { doSearch(el.dataset.q); hideSuggest(); },
-  'search-on'(el) {
+  'search-on'(el) { ACTIONS['engine-search'](el); },
+  'engine-search'(el) {
     const engine = ENGINES[el.dataset.engine];
-    if (!engine) return;
-    const url = engine.build(el.dataset.q);
+    if (!engine || !engine.build) return;
     hideSuggest();
-    if (S.resultsNewTab) openUrl(url, { newTab: true }); else openUrl(url);
+    const url = engine.build(el.dataset.q || '');
+    openDedicatedWindow(url);
+    toast('Risultati ' + engine.label + ' aperti in una finestra dedicata', 'ok', 4000);
+  },
+  'open-current-external'() {
+    const tab = activeTab();
+    if (!tab || !tab.url) return toast('Nessun sito aperto da aprire in finestra', 'err');
+    openDedicatedWindow(tab.url);
   },
   'add-home-link'() { homeLinkModal(); },
   'del-home-link'(el) {
