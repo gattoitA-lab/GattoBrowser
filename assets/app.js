@@ -511,7 +511,12 @@ function youtubeId(url) {
 }
 
 /* YouTube home e risultati: non incorporabili, ma ricostruiti dentro GattoBrowser con l'API di Piped */
-const PIPED_API = 'https://api.piped.private.coffee';
+const PIPED_APIS = ['https://pipedapi.ducks.party', 'https://api.piped.private.coffee'];
+const PIPED_API = PIPED_APIS[0];
+function ytHosts() {
+  const list = (S.pipedApi ? [S.pipedApi] : []).concat(PIPED_APIS);
+  return list.filter((h, i) => list.indexOf(h) === i);
+}
 function youTubeRoute(url) {
   try {
     const u = new URL(url);
@@ -961,17 +966,29 @@ function buildYouTubeApp(tab) {
   });
   tab.suspended = false;
 
-  let endpoint;
-  if (route.type === 'search') endpoint = ytApi('/search?q=' + encodeURIComponent(q) + '&filter=' + filter);
-  else if (route.type === 'playlist') endpoint = ytApi('/playlist?list=' + encodeURIComponent(route.list));
+  let ytPath;
+  if (route.type === 'search') ytPath = '/search?q=' + encodeURIComponent(q) + '&filter=' + filter;
+  else if (route.type === 'playlist') ytPath = '/playlist?list=' + encodeURIComponent(route.list);
   else if (route.type === 'channel') {
-    endpoint = route.id
-      ? ytApi('/channel/' + encodeURIComponent(route.id))
-      : ytApi('/c/' + encodeURIComponent(String(route.handle || '').replace(/^@/, '')));
-  } else endpoint = ytApi('/trending?region=IT');
+    ytPath = route.id
+      ? '/channel/' + encodeURIComponent(route.id)
+      : '/c/' + encodeURIComponent(String(route.handle || '').replace(/^@/, ''));
+  } else ytPath = '/trending?region=IT';
 
-  fetch(endpoint)
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+  const ytTry = (idx) => {
+    const hosts = ytHosts();
+    if (idx >= hosts.length) return Promise.reject(new Error('nessun servizio'));
+    return fetch(hosts[idx] + ytPath)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+      .then((data) => {
+        if (route.type === 'channel' && !((data && data.relatedStreams) || []).length) throw new Error('canale senza video');
+        if (route.type === 'playlist' && !((data && data.videos) || []).length) throw new Error('playlist vuota');
+        return data;
+      })
+      .catch(() => ytTry(idx + 1));
+  };
+
+  ytTry(0)
     .then((data) => {
       let items = [];
       if (route.type === 'playlist') items = (data && data.videos) || [];
