@@ -17,11 +17,11 @@ const LOGO_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3l11 
 
 const ENGINES = {
   gatto: { label: 'GattoSearch', tag: 'di GattoHub', build: null },
-  google: { label: 'Google', tag: 'esterno', build: (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q) },
-  bing: { label: 'Bing', tag: 'esterno', build: (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) },
-  duckduckgo: { label: 'DuckDuckGo', tag: 'esterno', build: (q) => 'https://duckduckgo.com/?q=' + encodeURIComponent(q) },
+  google: { label: 'Google', tag: 'vieta l\'incorporamento', build: (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q) },
+  bing: { label: 'Bing', tag: 'dentro GattoBrowser', build: (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) },
+  duckduckgo: { label: 'DuckDuckGo', tag: 'vieta l\'incorporamento', build: (q) => 'https://duckduckgo.com/?q=' + encodeURIComponent(q) },
   wikipedia: { label: 'Wikipedia', tag: 'enciclopedia', build: (q) => 'https://it.wikipedia.org/w/index.php?search=' + encodeURIComponent(q) },
-  youtube: { label: 'YouTube', tag: 'video', build: (q) => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) },
+  youtube: { label: 'YouTube', tag: 'dentro GattoBrowser', build: (q) => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q) },
   brave: { label: 'Brave', tag: 'esterno', build: (q) => 'https://search.brave.com/search?q=' + encodeURIComponent(q) },
   github: { label: 'GitHub', tag: 'codice', build: (q) => 'https://github.com/search?q=' + encodeURIComponent(q) }
 };
@@ -510,6 +510,33 @@ function youtubeId(url) {
   } catch (e) { return null; }
 }
 
+/* YouTube home e risultati: non incorporabili, ma ricostruiti dentro GattoBrowser con l'API di Piped */
+const PIPED_API = 'https://api.piped.private.coffee';
+function youTubeBrowseKind(url) {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)youtube\.com$/i.test(u.hostname)) return null;
+    if (u.pathname === '/' || u.pathname === '') return 'home';
+    if (/^\/feed\/(trending|explore)$/i.test(u.pathname)) return 'home';
+    if (u.pathname === '/results') return 'search';
+    return null;
+  } catch (e) { return null; }
+}
+
+function fmtDuration(sec) {
+  const n = Math.max(0, Number(sec) || 0);
+  const h = Math.floor(n / 3600), m = Math.floor((n % 3600) / 60), s = n % 60;
+  const pad = (x) => String(x).padStart(2, '0');
+  return h ? h + ':' + pad(m) + ':' + pad(s) : m + ':' + pad(s);
+}
+function fmtViews(v) {
+  const n = Number(v) || 0;
+  if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace('.', ',') + ' mld di visualizzazioni';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.', ',') + ' mln di visualizzazioni';
+  if (n >= 1000) return Math.round(n / 1000) + ' mila visualizzazioni';
+  return n + ' visualizzazioni';
+}
+
 /* Domini verificati che inviano X-Frame-Options / frame-ancestors: si aprono in finestra */
 const EXTERNAL_HOSTS = [
   'duolingo.com', 'netflix.com', 'instagram.com', 'tiktok.com', 'spotify.com', 'github.com',
@@ -523,6 +550,7 @@ const EXTERNAL_HOSTS = [
 
 function isExternalOnly(url) {
   if (youtubeId(url)) return false; // il player è incorporabile
+  if (youTubeBrowseKind(url)) return false; // home e ricerca: pagina interna
   if (EMBED_BLOCKERS.some((rx) => rx.test(url))) return true;
   const host = hostOf(url);
   if (!host) return false;
@@ -768,6 +796,12 @@ function buildWeb(tab) {
     return;
   }
 
+  /* YouTube home e risultati: esperienza interna con player GattoBrowser */
+  if (youTubeBrowseKind(tab.url)) {
+    buildYouTubeApp(tab);
+    return;
+  }
+
   /* Siti che vietano l'incorporamento: tutto dentro la scheda, con scelta esplicita */
   if (!tab.forceEmbed && isExternalOnly(tab.url)) {
     buildExternalPane(tab);
@@ -815,6 +849,68 @@ function buildWeb(tab) {
   }, 4200);
 }
 
+/* YouTube dentro GattoBrowser: elenco video dall'API Piped, riproduzione col player nativo */
+function buildYouTubeApp(tab) {
+  const pane = tab.pane;
+  const kind = youTubeBrowseKind(tab.url);
+  let q = '';
+  try { q = new URL(tab.url).searchParams.get('search_query') || ''; } catch (e) { q = ''; }
+
+  pane.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'yt-app';
+  wrap.innerHTML =
+    '<div class="yt-top">' +
+      '<b class="yt-brand">▶ YouTube</b>' +
+      '<form class="yt-form"><input id="ytQ" type="search" placeholder="Cerca video su YouTube" value="' + esc(q) + '"><button class="btn primary" type="submit">Cerca</button></form>' +
+      '<span class="tag">dentro GattoBrowser</span>' +
+    '</div>' +
+    '<div class="yt-grid" id="ytGrid"><div class="yt-msg">Carico i video…</div></div>';
+  pane.appendChild(wrap);
+
+  const grid = wrap.querySelector('#ytGrid');
+  wrap.querySelector('.yt-form').onsubmit = (e) => {
+    e.preventDefault();
+    const v = wrap.querySelector('#ytQ').value.trim();
+    if (v) navigate(tab, 'https://www.youtube.com/results?search_query=' + encodeURIComponent(v), { replace: true });
+  };
+  tab.suspended = false;
+
+  const api = (S.pipedApi || PIPED_API);
+  const endpoint = kind === 'search'
+    ? api + '/search?q=' + encodeURIComponent(q) + '&filter=videos'
+    : api + '/trending?region=IT';
+
+  fetch(endpoint).then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+    .then((data) => {
+      const items = (Array.isArray(data) ? data : (data && data.items) || []).filter((i) => i && i.url && /v=[\w-]{6,}/.test(i.url));
+      if (!items.length) throw new Error('nessun video');
+      grid.innerHTML = '';
+      items.slice(0, 24).forEach((it) => {
+        const id = (String(it.url).match(/v=([\w-]{6,})/) || [])[1];
+        if (!id) return;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'yt-card';
+        card.innerHTML =
+          '<div class="yt-thumb"><img loading="lazy" alt="" src="' + esc(it.thumbnail || ('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg')) + '">' +
+          (it.duration ? '<span class="yt-dur">' + esc(fmtDuration(it.duration)) + '</span>' : '') + '</div>' +
+          '<b>' + esc(it.title || 'Video') + '</b>' +
+          '<small>' + esc(it.uploaderName || '') + (it.views ? ' · ' + esc(fmtViews(it.views)) : '') + '</small>';
+        card.onclick = () => openUrl('https://www.youtube.com/watch?v=' + id, { newTab: true });
+        grid.appendChild(card);
+      });
+      $('#statusMsg').textContent = 'YouTube dentro GattoBrowser · ' + items.length + ' video';
+    })
+    .catch(() => {
+      grid.innerHTML =
+        '<div class="yt-msg"><b>Non riesco a caricare i video adesso</b><br>' +
+        'Il servizio che legge YouTube non risponde: puoi cercare su Bing oppure aprire YouTube in una finestra.<br>' +
+        '<button class="btn" data-act="open-external" data-url="' + esc(tab.url) + '">Apri YouTube in finestra ↗</button> ' +
+        '<button class="btn" data-act="open-settings" data-sec="search">Cambia servizio</button></div>';
+    });
+}
+
 function openDedicatedWindow(url) {
   const w = window.open(url, '_blank', 'width=1200,height=860,menubar=yes,toolbar=yes');
   if (!w) toast('Popup bloccato: consenti le finestre e riprova', 'err', 5000);
@@ -824,6 +920,12 @@ function openDedicatedWindow(url) {
 function buildExternalPane(tab) {
   const pane = tab.pane;
   const url = tab.url;
+  const googleQuery = (() => {
+    try {
+      const u = new URL(url);
+      return /(^|\.)google\./i.test(u.hostname) && /^\/search/.test(u.pathname) ? (u.searchParams.get('q') || '') : '';
+    } catch (e) { return ''; }
+  })();
   const wrap = document.createElement('div');
   wrap.className = 'blocked';
   wrap.innerHTML =
@@ -833,8 +935,9 @@ function buildExternalPane(tab) {
       '<p><b>' + esc(prettyHost(url)) + '</b> invia l\'header <b>X-Frame-Options</b>: per sicurezza impedisce a qualunque browser di mostrarlo dentro un\'altra pagina. Non è un limite di GattoBrowser, è una scelta del sito.</p>' +
       '<div class="url">' + esc(url) + '</div>' +
       '<div class="acts">' +
+        (googleQuery ? '<button class="btn primary" data-bing>Cerca con Bing qui</button>' : '') +
         '<button class="btn" data-force>Prova a mostrarlo qui</button>' +
-        '<button class="btn primary" data-open-here>Apri in una finestra dedicata ↗</button>' +
+        '<button class="btn' + (googleQuery ? '' : ' primary') + '" data-open-here>Apri in una finestra dedicata ↗</button>' +
         '<button class="btn" data-act="copy-link" data-url="' + esc(url) + '">Copia link</button>' +
       '</div>' +
       '<div style="font-size:11.5px;color:var(--muted);max-width:100%">Nessuna finestra si apre da sola: premi tu il pulsante quando vuoi. Puoi attivare l\'apertura automatica in Impostazioni → Privacy.</div>' +
@@ -842,6 +945,8 @@ function buildExternalPane(tab) {
   pane.appendChild(wrap);
   wrap.querySelector('[data-open-here]').onclick = () => openDedicatedWindow(url);
   wrap.querySelector('[data-force]').onclick = () => { tab.forceEmbed = true; refreshTab(tab); };
+  const bingBtn = wrap.querySelector('[data-bing]');
+  if (bingBtn) bingBtn.onclick = () => navigate(tab, 'https://www.bing.com/search?q=' + encodeURIComponent(googleQuery), { replace: true });
   if (S.autoExternal && (typeof hasGesture !== 'function' || hasGesture())) openDedicatedWindow(url);
 }
 
